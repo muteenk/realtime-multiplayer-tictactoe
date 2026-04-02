@@ -1,0 +1,89 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --color-arena-void: #06040d;
+  --color-arena-deep: #0c0a14;
+  --color-arena-panel: rgba(20, 18, 35, 0.72);
+  --color-arena-border: rgba(129, 140, 248, 0.22);
+  --color-neon-x: #22d3ee;
+  --color-neon-o: #e879f9;
+  --color-neon-gold: #fbbf24;
+  --color-mute: #94a3b8;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 1.5;
+  color: #e2e8f0;
+  background-color: var(--color-arena-void);
+  background-image:
+    radial-gradient(ellipse 100% 70% at 50% -15%, rgba(34, 211, 238, 0.12), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 100% 20%, rgba(232, 121, 249, 0.1), transparent 50%),
+    radial-gradient(ellipse 50% 40% at 0% 80%, rgba(99, 102, 241, 0.12), transparent 45%),
+    linear-gradient(180deg, #06040d 0%, #0a0818 45%, #050308 100%);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  isolation: isolate;
+}
+
+.arena-grid-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(34, 211, 238, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.04) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 85% 75% at 50% 45%, black 20%, transparent 70%);
+}
+
+.arena-grid-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent 0%,
+    rgba(6, 4, 13, 0.4) 100%
+  );
+}
+
+@keyframes arena-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.arena-live-dot {
+  animation: arena-pulse 2s ease-in-out infinite;
+}
