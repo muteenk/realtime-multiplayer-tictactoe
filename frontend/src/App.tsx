@@ -74,7 +74,7 @@ function App() {
             Tic Tac Toe
           </h1>
           <p className="mt-2 text-sm text-slate-400">
-            Neon arena · local duel (wire up sockets when ready)
+            Neon arena · local duel (wire up sockets when ready) TEST
           </p>
         </header>
 
