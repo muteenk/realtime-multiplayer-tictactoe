@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        "target": "ES2023",
+        "typeRoots": [
+        "./node_modules"
+        ],
+        "module": "Node16",
+        "moduleResolution": "node16",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "outDir": "./build"
+    },
+    "include": ["src/**/*.ts"],
+    "files": [
+        "./index.ts",
+        "./nakama-runtime.d.ts",
+        "lib/match/matchHandler.ts",
+        "lib/match/matchRPC.ts"
+    ],
+    "exclude": ["node_modules"]
+}
