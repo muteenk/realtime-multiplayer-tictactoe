@@ -1,0 +1,11 @@
+name: nakama1
+database:
+  address:
+    - "postgres:localdb@postgres:5432/nakama?sslmode=disable"
+runtime:
+  path: "/nakama/data/modules"
+socket:
+  server_key: "defaultkey"
+console:
+  username: "admin"
+  password: "password"

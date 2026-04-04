@@ -34,7 +34,13 @@ const CELL_KEYS = ['nw', 'n', 'ne', 'w', 'c', 'e', 'sw', 's', 'se'] as const
 const emptyBoard = (): Cell[] =>
   Array.from({ length: 9 }, (): Cell => null)
 
-export function ArenaGame() {
+type ArenaGameProps = Readonly<{
+  /** Nakama authoritative match id from `find_match_js`, if any. */
+  matchId?: string | null
+  onBackToLobby?: () => void
+}>
+
+export function ArenaGame({ matchId, onBackToLobby }: ArenaGameProps) {
   const [board, setBoard] = useState<Cell[]>(emptyBoard)
   const [current, setCurrent] = useState<Player>('X')
   const { winner, line, full } = useMemo(() => checkOutcome(board), [board])
@@ -82,12 +88,24 @@ export function ArenaGame() {
           <div className="inline-flex items-center gap-2 rounded-full border border-arena-border bg-arena-panel px-4 py-2 text-sm text-slate-300 shadow-[0_0_40px_-12px_rgba(99,102,241,0.35)] backdrop-blur-md">
             <span className="arena-live-dot size-2 rounded-full bg-emerald-400" aria-hidden />
             <span className="font-mono text-xs tracking-wider text-slate-400">
-              ROOM
+              MATCH
             </span>
-            <span className="font-semibold tracking-wide text-slate-100">
-              ARENA-7F2
+            <span
+              className="max-w-[min(100%,14rem)] truncate font-semibold tracking-wide text-slate-100"
+              title={matchId ?? undefined}
+            >
+              {matchId ?? 'Local practice'}
             </span>
           </div>
+          {onBackToLobby && (
+            <button
+              type="button"
+              onClick={onBackToLobby}
+              className="rounded-full border border-white/15 bg-black/30 px-4 py-2 text-xs font-semibold text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-200"
+            >
+              Find match
+            </button>
+          )}
           <div className="flex gap-2 rounded-full border border-white/10 bg-black/25 p-1 backdrop-blur-sm">
             <span
               className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${current === 'X' && !gameOver ? 'bg-cyan-500/20 text-cyan-300 shadow-[0_0_20px_rgba(34,211,238,0.35)]' : 'text-slate-500'}`}
