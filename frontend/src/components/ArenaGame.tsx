@@ -16,6 +16,16 @@ const OP_CODE_DONE = 3
 const OP_CODE_MOVE = 4
 const OP_CODE_REJECTED = 5
 const OP_CODE_OPPONENT_LEFT = 6
+const WINNING_LINES: number[][] = [
+  [0, 1, 2],
+  [3, 4, 5],
+  [6, 7, 8],
+  [0, 3, 6],
+  [1, 4, 7],
+  [2, 5, 8],
+  [0, 4, 8],
+  [2, 4, 6],
+]
 
 type ServerPayload = {
   board?: number[]
@@ -63,6 +73,27 @@ export function ArenaGame({
   const isMyTurn = () => {
     if (!myMark || !turn || gameDone || opponentLeft) return false
     return (myMark === 1 && turn === 1) || (myMark === 2 && turn === 2)
+  }
+
+  const winningLine = (() => {
+    if (!gameDone || winner === null || winner === 0) return null
+    const winningMark = winner === 1 ? 'X' : 'O'
+    for (const line of WINNING_LINES) {
+      if (line.every((idx) => board[idx] === winningMark)) {
+        return line
+      }
+    }
+    return null
+  })()
+
+  let resultToneClass = 'border border-rose-400/40 bg-rose-500/15 text-rose-200'
+  let resultText = 'You lost this round.'
+  if (winner === 0) {
+    resultToneClass = 'border border-slate-400/30 bg-slate-500/10 text-slate-200'
+    resultText = 'Match ended in a draw.'
+  } else if (winner === myMark) {
+    resultToneClass = 'border border-emerald-400/40 bg-emerald-500/15 text-emerald-200'
+    resultText = 'You won this round!'
   }
 
   const status = () => {
@@ -222,6 +253,11 @@ export function ArenaGame({
             </p>
             <p className="text-sm text-mute">Tap a cell to send your move</p>
             {error && <p className="mt-2 text-xs text-red-300">{error}</p>}
+            {gameDone && (
+              <div className={['mt-3 rounded-xl px-4 py-2 text-sm font-semibold', resultToneClass].join(' ')}>
+                {resultText}
+              </div>
+            )}
           </div>
 
           <div
@@ -232,6 +268,7 @@ export function ArenaGame({
             {board.map((cell, i) => {
               const pos = String(i + 1)
               const mark = cell ? `, ${cell}` : ', empty'
+              const isWinningCell = winningLine?.includes(i) ?? false
               return (
                 <button
                   key={CELL_KEYS[i]}
@@ -252,6 +289,9 @@ export function ArenaGame({
                     'hover:border-cyan-400/35 hover:shadow-[0_0_28px_-4px_rgba(34,211,238,0.25)]',
                     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400/60',
                     'disabled:cursor-default disabled:hover:border-cyan-500/15 disabled:hover:shadow-none',
+                    isWinningCell
+                      ? 'board-cell-win border-amber-400/60 bg-amber-500/10 text-amber-100'
+                      : '',
                     cell === 'X'
                       ? 'text-cyan-300 [text-shadow:0_0_24px_rgba(34,211,238,0.55)]'
                       : '',
