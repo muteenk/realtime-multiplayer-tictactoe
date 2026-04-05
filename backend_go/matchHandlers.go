@@ -29,6 +29,7 @@ type MatchState struct {
 	joinsInProgress int
 	presences       map[string]runtime.Presence
 	gameRunning     bool
+	gameOver        bool
 	emptyTicks      int
 
 	board       []config.MarkMove
@@ -200,9 +201,15 @@ func (m *MatchHandler) MatchLoop(
 		if len(activePresences) < 2 {
 			return s
 		}
+		// Do not auto-restart once a game is finished.
+		if s.gameOver {
+			return s
+		}
 
 		// Initialize the game state
 		s.gameRunning = true
+		s.gameOver = false
+		s.winner = config.Mark_MARK_UNSPECIFIED
 		marks := []config.MarkMove{config.Mark_MARK_X, config.Mark_MARK_O}
 		s.board = make([]config.MarkMove, 9)
 
@@ -264,6 +271,7 @@ func (m *MatchHandler) MatchLoop(
 				data, activePresences, nil, true,
 			)
 			s.gameRunning = false
+			s.gameOver = true
 			s.winner = config.Mark_MARK_UNSPECIFIED
 			return s
 		}
@@ -305,25 +313,6 @@ func (m *MatchHandler) MatchLoop(
 
 			s.board[move.Position] = mark
 
-			// Check for win
-			if s.checkForWinner(mark) {
-				doneMsg := GameDoneMessage{
-					Winner: mark,
-				}
-				data, err := json.Marshal(doneMsg)
-				if err != nil {
-					logger.Error("Failed to marshal done message: %s", err)
-					continue
-				}
-				dispatcher.BroadcastMessage(
-					int64(config.OpCode_OPCODE_DONE),
-					data, s.getActivePresences(), nil, true,
-				)
-				s.gameRunning = false
-				s.winner = mark
-				return s
-			}
-
 			switch mark {
 			case config.Mark_MARK_X:
 				s.markToMove = config.Mark_MARK_O
@@ -345,6 +334,26 @@ func (m *MatchHandler) MatchLoop(
 				int64(config.OpCode_OPCODE_UPDATE),
 				data, s.getActivePresences(), nil, true,
 			)
+
+			// Check for win
+			if s.checkForWinner(mark) {
+				doneMsg := GameDoneMessage{
+					Winner: mark,
+				}
+				data, err := json.Marshal(doneMsg)
+				if err != nil {
+					logger.Error("Failed to marshal done message: %s", err)
+					continue
+				}
+				dispatcher.BroadcastMessage(
+					int64(config.OpCode_OPCODE_DONE),
+					data, s.getActivePresences(), nil, true,
+				)
+				s.gameRunning = false
+				s.gameOver = true
+				s.winner = mark
+				return s
+			}
 
 		default:
 			logger.Error("Received unknown message type: %d", msg.GetOpCode())
