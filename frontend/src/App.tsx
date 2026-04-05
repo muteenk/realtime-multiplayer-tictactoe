@@ -14,7 +14,6 @@ function App() {
   const [socket, setSocket] = useState<Socket | null>(null)
   const [phase, setPhase] = useState<'lobby' | 'waiting' | 'arena'>('lobby')
   const [arenaMatchId, setArenaMatchId] = useState<string | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
   const [myMark, setMyMark] = useState<number | null>(null)
   const [turn, setTurn] = useState<number | null>(null)
 
@@ -44,14 +43,13 @@ function App() {
           }}
         />
       )}
-      {session && phase === 'waiting' && (
+      {session?.user_id && phase === 'waiting' && (
         <WaitingLobbyScreen
           matchId={arenaMatchId}
           socket={socket}
-          userId={userId}
+          userId={session.user_id}
           myMark={myMark}
           turn={turn}
-          setUserId={setUserId}
           setMyMark={setMyMark}
           setTurn={setTurn}
           onBackToFindMatch={() => {

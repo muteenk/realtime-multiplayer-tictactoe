@@ -17,8 +17,6 @@ const (
 	OpCode_OPCODE_REJECTED OpCode = 5
 	// Opponent has left the game.
 	OpCode_OPCODE_OPPONENT_LEFT OpCode = 6
-	// Invite AI player to join instead of the opponent who left the game.
-	OpCode_OPCODE_INVITE_AI OpCode = 7
 )
 
 type MarkMove int32

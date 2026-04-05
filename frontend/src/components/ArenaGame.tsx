@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { Socket } from '@heroiclabs/nakama-js'
 import './ArenaGame.css'
 
@@ -21,6 +21,10 @@ type ServerPayload = {
   board?: number[]
   markToMove?: number
   presences?: Record<string, number>
+}
+
+type GameDonePayload = {
+  winner: number
 }
 
 type ArenaGameProps = Readonly<{
@@ -51,22 +55,27 @@ export function ArenaGame({
   onBackToLobby 
 }: ArenaGameProps) {
   const [board, setBoard] = useState<Cell[]>(emptyBoard)
-  // const [markToMove, setMarkToMove] = useState<Player | null>(null)
   const [gameDone, setGameDone] = useState(false)
   const [opponentLeft, setOpponentLeft] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [winner, setWinner] = useState<number | null>(null)
 
   const isMyTurn = () => {
     if (!myMark || !turn || gameDone || opponentLeft) return false
     return (myMark === 1 && turn === 1) || (myMark === 2 && turn === 2)
   }
 
-  const status = useMemo(() => {
+  const status = () => {
     if (opponentLeft) return 'Opponent left the match'
-    if (gameDone) return 'Round complete'
+    if (gameDone) {
+      if (winner === 1) return (myMark === 1 ? 'You win' : 'Opponent wins')
+      if (winner === 2) return (myMark === 2 ? 'You win' : 'Opponent wins')
+      if (winner === 0) return 'Draw'
+      return 'Round complete'
+    }
     if (!myMark) return 'Waiting for game start...'
     return isMyTurn() ? 'Your move' : 'Opponent move'
-  }, [opponentLeft, gameDone, myMark, isMyTurn])
+  }
 
   useEffect(() => {
     if (!matchId) return
@@ -82,7 +91,7 @@ export function ArenaGame({
         setTurn(payload.markToMove ?? 0)
       }
       if (payload.presences) {
-        setMyMark(payload.presences[userId as keyof typeof payload.presences] ?? 0)
+        setMyMark(payload.presences[userId] ?? 0)
       }
       setError(null)
     }
@@ -99,6 +108,18 @@ export function ArenaGame({
       }
       if (msg.op_code === OP_CODE_DONE) {
         setGameDone(true)
+        try {
+          const text = decoder.decode(msg.data)
+          const parsed = JSON.parse(text) as GameDonePayload
+          if (parsed.winner === 1 || parsed.winner === 2 || parsed.winner === 0) {
+            setWinner(parsed.winner)
+          } else {
+            setWinner(null)
+          }
+        } catch (e) {
+          console.error('Failed to parse game done payload', e)
+          setWinner(null)
+        }
         return
       }
       if (msg.op_code !== OP_CODE_START && msg.op_code !== OP_CODE_UPDATE) {
@@ -128,7 +149,7 @@ export function ArenaGame({
     async (index: number) => {
       if (!matchId || !myMark || !turn) return
       if (opponentLeft || gameDone) return
-      if (!isMyTurn) return
+      if (!isMyTurn()) return
       if (board[index]) return
 
       try {
@@ -139,7 +160,7 @@ export function ArenaGame({
         setError('Failed to send move')
       }
     },
-    [socket, matchId, myMark, opponentLeft, gameDone, board, isMyTurn],
+    [socket, matchId, myMark, turn, opponentLeft, gameDone, board, isMyTurn],
   )
 
   return (
@@ -197,7 +218,7 @@ export function ArenaGame({
         <div className="rounded-3xl border border-arena-border bg-arena-panel p-5 shadow-[0_25px_80px_-20px_rgba(0,0,0,0.65)] backdrop-blur-xl sm:p-7">
           <div className="mb-5 flex flex-col items-center gap-1 border-b border-white/5 pb-5 text-center">
             <p className="text-lg font-semibold text-slate-100" role="status" aria-live="polite">
-              {status}
+              {status()}
             </p>
             <p className="text-sm text-mute">Tap a cell to send your move</p>
             {error && <p className="mt-2 text-xs text-red-300">{error}</p>}
@@ -222,7 +243,7 @@ export function ArenaGame({
                     gameDone ||
                     opponentLeft ||
                     !myMark ||
-                    !isMyTurn
+                    !isMyTurn()
                   }
                   onClick={() => play(i)}
                   className={[

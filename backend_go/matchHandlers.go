@@ -16,13 +16,13 @@ type MatchHandler struct {
 }
 
 type GameUpdateMessage struct {
-	Board      []config.MarkMove            `json:"board"`
-	MarkToMove config.MarkMove              `json:"markToMove"`
-	Presences  map[string]config.MarkMove   `json:"presences"`
+	Board      []config.MarkMove          `json:"board"`
+	MarkToMove config.MarkMove            `json:"markToMove"`
+	Presences  map[string]config.MarkMove `json:"presences"`
 }
 
 type GameDoneMessage struct {
-	winner config.MarkMove
+	Winner config.MarkMove `json:"winner"`
 }
 
 type MatchState struct {
@@ -238,7 +238,7 @@ func (m *MatchHandler) MatchLoop(
 		// Board Fill check
 		boardFilled := true
 		for _, pos := range s.board {
-			if pos == config.Mark_MARK_UNSPECIFIED {
+			if pos != config.Mark_MARK_X && pos != config.Mark_MARK_O {
 				boardFilled = false
 				break
 			}
@@ -250,9 +250,18 @@ func (m *MatchHandler) MatchLoop(
 					activePresences = append(activePresences, presence)
 				}
 			}
+			logger.Info("DRAW: Board filled, game over")
+			doneMsg := GameDoneMessage{
+				Winner: config.Mark_MARK_UNSPECIFIED,
+			}
+			data, err := json.Marshal(doneMsg)
+			if err != nil {
+				logger.Error("Failed to marshal draw done message: %s", err)
+				return s
+			}
 			dispatcher.BroadcastMessage(
 				int64(config.OpCode_OPCODE_DONE),
-				nil, activePresences, nil, true,
+				data, activePresences, nil, true,
 			)
 			s.gameRunning = false
 			s.winner = config.Mark_MARK_UNSPECIFIED
@@ -299,7 +308,7 @@ func (m *MatchHandler) MatchLoop(
 			// Check for win
 			if s.checkForWinner(mark) {
 				doneMsg := GameDoneMessage{
-					winner: mark,
+					Winner: mark,
 				}
 				data, err := json.Marshal(doneMsg)
 				if err != nil {

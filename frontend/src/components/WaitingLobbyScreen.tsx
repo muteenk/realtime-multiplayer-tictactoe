@@ -4,10 +4,9 @@ import type { Socket } from '@heroiclabs/nakama-js'
 type Props = Readonly<{
   matchId: string | null
   socket: Socket | null
-  userId: string | null
+  userId: string
   myMark: number | null
   turn: number | null
-  setUserId: (userId: string) => void
   setMyMark: (myMark: number) => void
   setTurn: (turn: number) => void
   onBackToFindMatch: () => void
@@ -17,7 +16,6 @@ type Props = Readonly<{
 export function WaitingLobbyScreen({
   matchId,
   socket,
-  setUserId,
   userId,
   myMark,
   turn,
@@ -47,14 +45,8 @@ export function WaitingLobbyScreen({
         }
       }
 
-      const joinedMatch = await socket.joinMatch(matchId)
-      setUserId(joinedMatch.self.user_id)
+      await socket.joinMatch(matchId)
       if (cancelled) return
-
-      // Fallback in case START was emitted before event handler settled.
-      if (joinedMatch.size >= 2) {
-        onEnterArena()
-      }
     }
 
     joinAndListen().catch((error) => {
@@ -65,7 +57,7 @@ export function WaitingLobbyScreen({
       cancelled = true
       socket.onmatchdata = previousOnMatchData
     }
-  }, [socket, matchId, onEnterArena])
+  }, [socket, matchId, userId, setMyMark, setTurn, onEnterArena])
 
   
   useEffect(() => {
