@@ -10,7 +10,7 @@ export interface RpcFindMatchRequest {
 }
 
 export interface RpcFindMatchResponse {
-  matchIds: string[]
+  matchId: string
 }
 
 export async function findMatchRpc(

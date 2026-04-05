@@ -11,15 +11,16 @@ export function FindMatchScreen({ session, onEnterArena }: Props) {
   const [fast, setFast] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [matchIds, setMatchIds] = useState<string[] | null>(null)
+  const [matchId, setMatchId] = useState<string | null>(null)
 
   const handleFindMatch = useCallback(async () => {
     setError(null)
-    setMatchIds(null)
+    setMatchId(null)
     setLoading(true)
     try {
       const res = await findMatchRpc(session, { fast })
-      setMatchIds(res.matchIds)
+      setMatchId(res.matchId)
+      onEnterArena(res.matchId)
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Find match failed'
       setError(message)
@@ -28,7 +29,7 @@ export function FindMatchScreen({ session, onEnterArena }: Props) {
     }
   }, [session, fast])
 
-  const primaryId = matchIds?.[0]
+  const primaryId = matchId
 
   return (
     <div className="relative z-10 mx-auto flex min-h-svh w-full max-w-lg flex-col px-4 pb-10 pt-8 sm:px-6 sm:pt-12">
@@ -75,18 +76,16 @@ export function FindMatchScreen({ session, onEnterArena }: Props) {
           </p>
         )}
 
-        {matchIds && matchIds.length > 0 && (
+        {matchId && (
           <div className="space-y-3">
             <p className="text-sm font-medium text-slate-200">Match IDs</p>
             <ul className="max-h-40 space-y-2 overflow-y-auto font-mono text-xs text-slate-300">
-              {matchIds.map((id) => (
-                <li
-                  key={id}
-                  className="break-all rounded-lg border border-white/10 bg-black/30 px-3 py-2"
-                >
-                  {id}
-                </li>
-              ))}
+              <li
+                key={matchId}
+                className="break-all rounded-lg border border-white/10 bg-black/30 px-3 py-2"
+              >
+                {matchId}
+              </li>
             </ul>
             {primaryId && (
               <button
@@ -100,7 +99,7 @@ export function FindMatchScreen({ session, onEnterArena }: Props) {
           </div>
         )}
 
-        {matchIds?.length === 0 && (
+        {matchId === null && (
           <p className="text-sm text-mute">Server returned no match IDs.</p>
         )}
       </div>

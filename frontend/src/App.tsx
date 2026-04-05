@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArenaGame } from './components/ArenaGame'
 import { FindMatchScreen } from './components/FindMatchScreen'
+import { WaitingLobbyScreen } from './components/WaitingLobbyScreen'
 import { connectSocket, createSession } from './lib/nakama/connection'
 import type { Session, Socket } from '@heroiclabs/nakama-js'
 
@@ -11,7 +12,7 @@ import type { Session, Socket } from '@heroiclabs/nakama-js'
 function App() {
   const [session, setSession] = useState<Session | null>(null)
   const [socket, setSocket] = useState<Socket | null>(null)
-  const [phase, setPhase] = useState<'lobby' | 'arena'>('lobby')
+  const [phase, setPhase] = useState<'lobby' | 'waiting' | 'arena'>('lobby')
   const [arenaMatchId, setArenaMatchId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -36,12 +37,29 @@ function App() {
           session={session}
           onEnterArena={(matchId) => {
             setArenaMatchId(matchId)
-            setPhase('arena')
+            setPhase('waiting')
           }}
         />
       )}
+      {session && phase === 'waiting' && (
+        <WaitingLobbyScreen
+          matchId={arenaMatchId}
+          onBackToFindMatch={() => {
+            setArenaMatchId(null)
+            setPhase('lobby')
+          }}
+          onEnterArena={() => setPhase('arena')}
+        />
+      )}
+
       {session && socket && phase === 'arena' && (
-        <ArenaGame matchId={arenaMatchId} onBackToLobby={() => setPhase('lobby')} />
+        <ArenaGame
+          matchId={arenaMatchId}
+          onBackToLobby={() => {
+            setArenaMatchId(null)
+            setPhase('lobby')
+          }}
+        />
       )}
     </>
   )

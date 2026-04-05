@@ -35,8 +35,8 @@ type Move struct {
 
 // Constants for the match
 const (
-	MaxEmptyTicks int = 10
-	TickRate      int = 10
+	MaxEmptyTicks int = 150
+	TickRate      int = 1
 )
 
 var WinningPositions = [][]int32{

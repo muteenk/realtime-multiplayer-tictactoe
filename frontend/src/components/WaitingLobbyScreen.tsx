@@ -1,0 +1,45 @@
+type Props = Readonly<{
+  matchId: string | null
+  onBackToFindMatch: () => void
+  onEnterArena: () => void
+}>
+
+export function WaitingLobbyScreen({
+  matchId,
+  onBackToFindMatch,
+  onEnterArena,
+}: Props) {
+  return (
+    <div className="relative z-10 mx-auto flex min-h-svh w-full max-w-lg flex-col items-center justify-center px-4 pb-10 pt-8 sm:px-6 sm:pt-12">
+      <div className="w-full rounded-3xl border border-arena-border bg-arena-panel p-6 text-center shadow-[0_25px_80px_-20px_rgba(0,0,0,0.65)] backdrop-blur-xl sm:p-8">
+        <p className="mb-2 font-medium tracking-[0.35em] text-xs uppercase text-slate-500">
+          Lobby
+        </p>
+        <h1 className="bg-linear-to-r from-cyan-300 via-indigo-300 to-fuchsia-300 bg-clip-text font-bold text-3xl tracking-tight text-transparent sm:text-4xl">
+          Waiting for player
+        </h1>
+        <p className="mt-3 break-all font-mono text-xs text-slate-300">{matchId}</p>
+        <p className="mt-4 text-sm text-slate-400">
+          Match created. Waiting for the second player to join.
+        </p>
+
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={onBackToFindMatch}
+            className="rounded-xl border border-white/15 bg-black/30 px-4 py-2.5 text-xs font-semibold text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-200"
+          >
+            Back to find match
+          </button>
+          <button
+            type="button"
+            onClick={onEnterArena}
+            className="rounded-xl border border-fuchsia-500/35 bg-fuchsia-500/15 px-4 py-2.5 text-xs font-semibold text-fuchsia-100 transition hover:bg-fuchsia-500/25"
+          >
+            Enter arena
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
