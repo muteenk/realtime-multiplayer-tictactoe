@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+
 	"github.com/heroiclabs/nakama-common/runtime"
 )
 
@@ -19,8 +20,8 @@ func RpcFindMatch(
 		return "", err
 	}
 
-	resp := map[string]string {
-		"ok": "true",
+	resp := map[string]string{
+		"success": "true",
 		"matchId": matchId,
 	}
 
