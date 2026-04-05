@@ -28,8 +28,8 @@ type ArenaGameProps = Readonly<{
   socket: Socket
   userId: string
   myMark: number | null
-  turn: boolean | null
-  setTurn: (turn: boolean) => void
+  turn: number | null
+  setTurn: (turn: number) => void
   setMyMark: (myMark: number) => void
   onBackToLobby?: () => void
 }>
@@ -56,16 +56,16 @@ export function ArenaGame({
   const [opponentLeft, setOpponentLeft] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const isMyTurn = useMemo(() => {
+  const isMyTurn = () => {
     if (!myMark || !turn || gameDone || opponentLeft) return false
-    return (myMark === 1 && turn) || (myMark === 2 && turn)
-  }, [myMark, gameDone, opponentLeft])
+    return (myMark === 1 && turn === 1) || (myMark === 2 && turn === 2)
+  }
 
   const status = useMemo(() => {
     if (opponentLeft) return 'Opponent left the match'
     if (gameDone) return 'Round complete'
     if (!myMark) return 'Waiting for game start...'
-    return isMyTurn ? 'Your move' : 'Opponent move'
+    return isMyTurn() ? 'Your move' : 'Opponent move'
   }, [opponentLeft, gameDone, myMark, isMyTurn])
 
   useEffect(() => {
@@ -78,14 +78,11 @@ export function ArenaGame({
       if (Array.isArray(payload.board) && payload.board.length === 9) {
         setBoard(payload.board.map((m) => toCell(m)))
       }
-      // if (payload.markToMove !== undefined) {
-      //   setMarkToMove(toCell(payload.markToMove))
-      // }
+      if (payload.markToMove !== undefined) {
+        setTurn(payload.markToMove ?? 0)
+      }
       if (payload.presences) {
-        const playerMark = payload.presences[userId]
-        if (playerMark === 1 || playerMark === 2) {
-          setMyMark(playerMark)
-        }
+        setMyMark(payload.presences[userId as keyof typeof payload.presences] ?? 0)
       }
       setError(null)
     }
@@ -185,12 +182,12 @@ export function ArenaGame({
           )}
           <div className="flex gap-2 rounded-full border border-white/10 bg-black/25 p-1 backdrop-blur-sm">
             <span
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${myMark === 1 && !gameDone ? 'bg-cyan-500/20 text-cyan-300 shadow-[0_0_20px_rgba(34,211,238,0.35)]' : 'text-slate-500'}`}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${turn === 1 && !gameDone ? 'bg-cyan-500/20 text-cyan-300 shadow-[0_0_20px_rgba(34,211,238,0.35)]' : 'text-slate-500'}`}
             >
               {myMark === 1 ? 'You · X' : 'Opponent · X'}
             </span>
             <span
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${myMark === 2 && !gameDone ? 'bg-fuchsia-500/20 text-fuchsia-300 shadow-[0_0_20px_rgba(232,121,249,0.35)]' : 'text-slate-500'}`}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${turn === 2 && !gameDone ? 'bg-fuchsia-500/20 text-fuchsia-300 shadow-[0_0_20px_rgba(232,121,249,0.35)]' : 'text-slate-500'}`}
             >
               {myMark === 2 ? 'You · O' : 'Opponent · O'}
             </span>

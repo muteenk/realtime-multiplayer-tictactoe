@@ -6,10 +6,10 @@ type Props = Readonly<{
   socket: Socket | null
   userId: string | null
   myMark: number | null
-  turn: boolean | null
+  turn: number | null
   setUserId: (userId: string) => void
   setMyMark: (myMark: number) => void
-  setTurn: (turn: boolean) => void
+  setTurn: (turn: number) => void
   onBackToFindMatch: () => void
   onEnterArena: () => void
 }>
@@ -41,8 +41,9 @@ export function WaitingLobbyScreen({
           const text = decoder.decode(msg.data)
           const parsed = JSON.parse(text)
           console.log('parsed', parsed)
-          setMyMark(parsed.presences[userId as keyof typeof parsed.presences] ?? 0)
-          setTurn(parsed.turn)
+          let mark = parsed.presences[userId as keyof typeof parsed.presences] ?? 0
+          setMyMark(mark)
+          setTurn(parsed.markToMove ?? 0)
         }
       }
 
@@ -68,7 +69,7 @@ export function WaitingLobbyScreen({
 
   
   useEffect(() => {
-    if (myMark && turn === true) {
+    if (myMark && turn) {
       onEnterArena()
     }
   }, [myMark, turn, onEnterArena])

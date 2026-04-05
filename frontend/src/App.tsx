@@ -16,7 +16,7 @@ function App() {
   const [arenaMatchId, setArenaMatchId] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [myMark, setMyMark] = useState<number | null>(null)
-  const [turn, setTurn] = useState<boolean | null>(null)
+  const [turn, setTurn] = useState<number | null>(null)
 
   useEffect(() => {
     const init = async () => {
