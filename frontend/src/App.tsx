@@ -44,6 +44,7 @@ function App() {
       {session && phase === 'waiting' && (
         <WaitingLobbyScreen
           matchId={arenaMatchId}
+          socket={socket}
           onBackToFindMatch={() => {
             setArenaMatchId(null)
             setPhase('lobby')

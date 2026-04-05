@@ -1,14 +1,53 @@
+import { useEffect } from 'react'
+import type { Socket } from '@heroiclabs/nakama-js'
+
 type Props = Readonly<{
   matchId: string | null
+  socket: Socket | null
   onBackToFindMatch: () => void
   onEnterArena: () => void
 }>
 
 export function WaitingLobbyScreen({
   matchId,
+  socket,
   onBackToFindMatch,
   onEnterArena,
 }: Props) {
+  useEffect(() => {
+    if (!socket || !matchId) return
+
+    let cancelled = false
+    const previousOnMatchData = socket.onmatchdata
+
+    const joinAndListen = async () => {
+      const joinedMatch = await socket.joinMatch(matchId)
+      if (cancelled) return
+
+      // If another player is already in the match, start now.
+      if ((joinedMatch.presences?.length ?? 0) > 0) {
+        onEnterArena()
+        return
+      }
+
+      socket.onmatchdata = (msg) => {
+        if (msg.match_id !== matchId) return
+        if (msg.op_code === 1) {
+          onEnterArena()
+        }
+      }
+    }
+
+    joinAndListen().catch((error) => {
+      console.error('Error joining waiting match', error)
+    })
+
+    return () => {
+      cancelled = true
+      socket.onmatchdata = previousOnMatchData
+    }
+  }, [socket, matchId, onEnterArena])
+
   return (
     <div className="relative z-10 mx-auto flex min-h-svh w-full max-w-lg flex-col items-center justify-center px-4 pb-10 pt-8 sm:px-6 sm:pt-12">
       <div className="w-full rounded-3xl border border-arena-border bg-arena-panel p-6 text-center shadow-[0_25px_80px_-20px_rgba(0,0,0,0.65)] backdrop-blur-xl sm:p-8">
