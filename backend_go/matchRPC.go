@@ -42,10 +42,10 @@ func RpcFindMatch(
 
 	newMatchId := ""
 	if len(matches) > 0 {
-		for _, match := range matches {
-			if match.presences < 2 {
-				match.presences++
-				newMatchId = match.matchId
+		for i := range matches {
+			if matches[i].presences < 2 {
+				matches[i].presences++
+				newMatchId = matches[i].matchId
 				break
 			}
 		}
