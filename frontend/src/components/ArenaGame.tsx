@@ -1,72 +1,149 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { Socket } from '@heroiclabs/nakama-js'
 import './ArenaGame.css'
 
-type Player = 'X' | 'O'
-type Cell = Player | null
-
-const LINES: number[][] = [
-  [0, 1, 2],
-  [3, 4, 5],
-  [6, 7, 8],
-  [0, 3, 6],
-  [1, 4, 7],
-  [2, 5, 8],
-  [0, 4, 8],
-  [2, 4, 6],
-]
-
-function checkOutcome(board: Cell[]): {
-  winner: Player | null
-  line: number[] | null
-  full: boolean
-} {
-  for (const [a, b, c] of LINES) {
-    if (board[a] && board[a] === board[b] && board[b] === board[c]) {
-      return { winner: board[a], line: [a, b, c], full: false }
-    }
-  }
-  const full = board.every(Boolean)
-  return { winner: null, line: null, full }
-}
+type Mark = 'X' | 'O'
+type Cell = Mark | null
 
 const CELL_KEYS = ['nw', 'n', 'ne', 'w', 'c', 'e', 'sw', 's', 'se'] as const
 
 const emptyBoard = (): Cell[] =>
   Array.from({ length: 9 }, (): Cell => null)
 
+const OP_CODE_START = 1
+const OP_CODE_UPDATE = 2
+const OP_CODE_DONE = 3
+const OP_CODE_MOVE = 4
+const OP_CODE_REJECTED = 5
+const OP_CODE_OPPONENT_LEFT = 6
+
+type ServerPayload = {
+  board?: number[]
+  markToMove?: number
+  presences?: Record<string, number>
+}
+
 type ArenaGameProps = Readonly<{
-  /** Nakama authoritative match id from `find_match_js`, if any. */
-  matchId?: string | null
+  matchId: string | null
+  socket: Socket
+  userId: string
+  myMark: number | null
+  turn: boolean | null
+  setTurn: (turn: boolean) => void
+  setMyMark: (myMark: number) => void
   onBackToLobby?: () => void
 }>
 
-export function ArenaGame({ matchId, onBackToLobby }: ArenaGameProps) {
+const toCell = (mark?: number): Cell => {
+  if (mark === 1) return 'X'
+  if (mark === 2) return 'O'
+  return null
+}
+
+export function ArenaGame({ 
+  matchId, 
+  socket, 
+  userId, 
+  myMark, 
+  turn,
+  setMyMark,
+  setTurn,
+  onBackToLobby 
+}: ArenaGameProps) {
   const [board, setBoard] = useState<Cell[]>(emptyBoard)
-  const [current, setCurrent] = useState<Player>('X')
-  const { winner, line, full } = useMemo(() => checkOutcome(board), [board])
-  const gameOver = winner !== null || full
+  // const [markToMove, setMarkToMove] = useState<Player | null>(null)
+  const [gameDone, setGameDone] = useState(false)
+  const [opponentLeft, setOpponentLeft] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const isMyTurn = useMemo(() => {
+    if (!myMark || !turn || gameDone || opponentLeft) return false
+    return (myMark === 1 && turn) || (myMark === 2 && turn)
+  }, [myMark, gameDone, opponentLeft])
 
   const status = useMemo(() => {
-    if (winner) return `${winner} takes the match`
-    if (full) return 'Draw — grid locked'
-    return `${current}'s move`
-  }, [winner, full, current])
+    if (opponentLeft) return 'Opponent left the match'
+    if (gameDone) return 'Round complete'
+    if (!myMark) return 'Waiting for game start...'
+    return isMyTurn ? 'Your move' : 'Opponent move'
+  }, [opponentLeft, gameDone, myMark, isMyTurn])
+
+  useEffect(() => {
+    if (!matchId) return
+
+    const previousOnMatchData = socket.onmatchdata
+    const decoder = new TextDecoder()
+
+    const applyPayload = (payload: ServerPayload) => {
+      if (Array.isArray(payload.board) && payload.board.length === 9) {
+        setBoard(payload.board.map((m) => toCell(m)))
+      }
+      // if (payload.markToMove !== undefined) {
+      //   setMarkToMove(toCell(payload.markToMove))
+      // }
+      if (payload.presences) {
+        const playerMark = payload.presences[userId]
+        if (playerMark === 1 || playerMark === 2) {
+          setMyMark(playerMark)
+        }
+      }
+      setError(null)
+    }
+
+    socket.onmatchdata = (msg) => {
+      if (msg.match_id !== matchId) return
+      if (msg.op_code === OP_CODE_OPPONENT_LEFT) {
+        setOpponentLeft(true)
+        return
+      }
+      if (msg.op_code === OP_CODE_REJECTED) {
+        setError('Move rejected by server')
+        return
+      }
+      if (msg.op_code === OP_CODE_DONE) {
+        setGameDone(true)
+        return
+      }
+      if (msg.op_code !== OP_CODE_START && msg.op_code !== OP_CODE_UPDATE) {
+        return
+      }
+
+      try {
+        const text = decoder.decode(msg.data)
+        const parsed = JSON.parse(text) as ServerPayload
+        applyPayload(parsed)
+        if (msg.op_code === OP_CODE_START) {
+          setGameDone(false)
+          setOpponentLeft(false)
+        }
+      } catch (e) {
+        console.error('Failed to parse match data', e)
+        setError('Failed to parse game state update')
+      }
+    }
+
+    return () => {
+      socket.onmatchdata = previousOnMatchData
+    }
+  }, [socket, matchId, userId])
 
   const play = useCallback(
-    (index: number) => {
-      if (board[index] || gameOver) return
-      const next = [...board]
-      next[index] = current
-      setBoard(next)
-      setCurrent((p) => (p === 'X' ? 'O' : 'X'))
-    },
-    [board, current, gameOver],
-  )
+    async (index: number) => {
+      if (!matchId || !myMark || !turn) return
+      if (opponentLeft || gameDone) return
+      if (!isMyTurn) return
+      if (board[index]) return
 
-  const reset = useCallback(() => {
-    setBoard(emptyBoard())
-    setCurrent('X')
-  }, [])
+      try {
+        const payload = new TextEncoder().encode(JSON.stringify({ position: index }))
+        await socket.sendMatchState(matchId, OP_CODE_MOVE, payload)
+      } catch (e) {
+        console.error('Failed to send move', e)
+        setError('Failed to send move')
+      }
+    },
+    [socket, matchId, myMark, opponentLeft, gameDone, board, isMyTurn],
+  )
 
   return (
     <>
@@ -80,7 +157,7 @@ export function ArenaGame({ matchId, onBackToLobby }: ArenaGameProps) {
             Tic Tac Toe
           </h1>
           <p className="mt-2 text-sm text-slate-400">
-            Neon arena · local duel (wire up sockets when ready)
+            Neon arena · authoritative realtime
           </p>
         </header>
 
@@ -108,14 +185,14 @@ export function ArenaGame({ matchId, onBackToLobby }: ArenaGameProps) {
           )}
           <div className="flex gap-2 rounded-full border border-white/10 bg-black/25 p-1 backdrop-blur-sm">
             <span
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${current === 'X' && !gameOver ? 'bg-cyan-500/20 text-cyan-300 shadow-[0_0_20px_rgba(34,211,238,0.35)]' : 'text-slate-500'}`}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${myMark === 1 && !gameDone ? 'bg-cyan-500/20 text-cyan-300 shadow-[0_0_20px_rgba(34,211,238,0.35)]' : 'text-slate-500'}`}
             >
-              You · X
+              {myMark === 1 ? 'You · X' : 'Opponent · X'}
             </span>
             <span
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${current === 'O' && !gameOver ? 'bg-fuchsia-500/20 text-fuchsia-300 shadow-[0_0_20px_rgba(232,121,249,0.35)]' : 'text-slate-500'}`}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${myMark === 2 && !gameDone ? 'bg-fuchsia-500/20 text-fuchsia-300 shadow-[0_0_20px_rgba(232,121,249,0.35)]' : 'text-slate-500'}`}
             >
-              Guest · O
+              {myMark === 2 ? 'You · O' : 'Opponent · O'}
             </span>
           </div>
         </div>
@@ -125,7 +202,8 @@ export function ArenaGame({ matchId, onBackToLobby }: ArenaGameProps) {
             <p className="text-lg font-semibold text-slate-100" role="status" aria-live="polite">
               {status}
             </p>
-            <p className="text-sm text-mute">Tap a cell to claim it</p>
+            <p className="text-sm text-mute">Tap a cell to send your move</p>
+            {error && <p className="mt-2 text-xs text-red-300">{error}</p>}
           </div>
 
           <div
@@ -134,7 +212,6 @@ export function ArenaGame({ matchId, onBackToLobby }: ArenaGameProps) {
             aria-label="Tic tac toe board"
           >
             {board.map((cell, i) => {
-              const isWin = line?.includes(i) ?? false
               const pos = String(i + 1)
               const mark = cell ? `, ${cell}` : ', empty'
               return (
@@ -143,7 +220,13 @@ export function ArenaGame({ matchId, onBackToLobby }: ArenaGameProps) {
                   type="button"
                   role="gridcell"
                   aria-label={'Cell ' + pos + mark}
-                  disabled={Boolean(cell) || gameOver}
+                  disabled={
+                    Boolean(cell) ||
+                    gameDone ||
+                    opponentLeft ||
+                    !myMark ||
+                    !isMyTurn
+                  }
                   onClick={() => play(i)}
                   className={[
                     'flex aspect-square items-center justify-center rounded-2xl border text-4xl font-bold transition-all sm:text-5xl',
@@ -151,13 +234,10 @@ export function ArenaGame({ matchId, onBackToLobby }: ArenaGameProps) {
                     'hover:border-cyan-400/35 hover:shadow-[0_0_28px_-4px_rgba(34,211,238,0.25)]',
                     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400/60',
                     'disabled:cursor-default disabled:hover:border-cyan-500/15 disabled:hover:shadow-none',
-                    isWin
-                      ? 'board-cell-win border-amber-400/50 bg-amber-500/10 text-amber-100'
-                      : '',
-                    cell === 'X' && !isWin
+                    cell === 'X'
                       ? 'text-cyan-300 [text-shadow:0_0_24px_rgba(34,211,238,0.55)]'
                       : '',
-                    cell === 'O' && !isWin
+                    cell === 'O'
                       ? 'text-fuchsia-300 [text-shadow:0_0_24px_rgba(232,121,249,0.55)]'
                       : '',
                   ]
@@ -171,20 +251,10 @@ export function ArenaGame({ matchId, onBackToLobby }: ArenaGameProps) {
               )
             })}
           </div>
-
-          <div className="mt-6 flex justify-center">
-            <button
-              type="button"
-              onClick={reset}
-              className="rounded-xl border border-neon-gold/40 bg-neon-gold/10 px-6 py-2.5 text-sm font-semibold text-neon-gold transition hover:bg-neon-gold/20 hover:shadow-[0_0_28px_rgba(251,191,36,0.4)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon-gold/70"
-            >
-              New match
-            </button>
-          </div>
         </div>
 
         <footer className="mt-auto pt-10 text-center text-xs text-slate-600">
-          X glows cyan · O glows magenta · winning row pulses gold
+          Server validates turns and broadcasts board updates
         </footer>
       </div>
     </>

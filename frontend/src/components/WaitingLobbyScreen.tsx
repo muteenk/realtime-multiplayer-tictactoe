@@ -4,6 +4,12 @@ import type { Socket } from '@heroiclabs/nakama-js'
 type Props = Readonly<{
   matchId: string | null
   socket: Socket | null
+  userId: string | null
+  myMark: number | null
+  turn: boolean | null
+  setUserId: (userId: string) => void
+  setMyMark: (myMark: number) => void
+  setTurn: (turn: boolean) => void
   onBackToFindMatch: () => void
   onEnterArena: () => void
 }>
@@ -11,30 +17,42 @@ type Props = Readonly<{
 export function WaitingLobbyScreen({
   matchId,
   socket,
+  setUserId,
+  userId,
+  myMark,
+  turn,
+  setMyMark,
+  setTurn,
   onBackToFindMatch,
   onEnterArena,
 }: Props) {
+
   useEffect(() => {
     if (!socket || !matchId) return
 
     let cancelled = false
     const previousOnMatchData = socket.onmatchdata
+    const decoder = new TextDecoder()
 
     const joinAndListen = async () => {
-      const joinedMatch = await socket.joinMatch(matchId)
-      if (cancelled) return
-
-      // If another player is already in the match, start now.
-      if ((joinedMatch.presences?.length ?? 0) > 0) {
-        onEnterArena()
-        return
-      }
-
       socket.onmatchdata = (msg) => {
         if (msg.match_id !== matchId) return
         if (msg.op_code === 1) {
-          onEnterArena()
+          const text = decoder.decode(msg.data)
+          const parsed = JSON.parse(text)
+          console.log('parsed', parsed)
+          setMyMark(parsed.presences[userId as keyof typeof parsed.presences] ?? 0)
+          setTurn(parsed.turn)
         }
+      }
+
+      const joinedMatch = await socket.joinMatch(matchId)
+      setUserId(joinedMatch.self.user_id)
+      if (cancelled) return
+
+      // Fallback in case START was emitted before event handler settled.
+      if (joinedMatch.size >= 2) {
+        onEnterArena()
       }
     }
 
@@ -47,6 +65,13 @@ export function WaitingLobbyScreen({
       socket.onmatchdata = previousOnMatchData
     }
   }, [socket, matchId, onEnterArena])
+
+  
+  useEffect(() => {
+    if (myMark && turn === true) {
+      onEnterArena()
+    }
+  }, [myMark, turn, onEnterArena])
 
   return (
     <div className="relative z-10 mx-auto flex min-h-svh w-full max-w-lg flex-col items-center justify-center px-4 pb-10 pt-8 sm:px-6 sm:pt-12">
@@ -70,13 +95,13 @@ export function WaitingLobbyScreen({
           >
             Back to find match
           </button>
-          <button
+          {/* <button
             type="button"
             onClick={onEnterArena}
             className="rounded-xl border border-fuchsia-500/35 bg-fuchsia-500/15 px-4 py-2.5 text-xs font-semibold text-fuchsia-100 transition hover:bg-fuchsia-500/25"
           >
             Enter arena
-          </button>
+          </button> */}
         </div>
       </div>
     </div>

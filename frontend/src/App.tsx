@@ -14,6 +14,9 @@ function App() {
   const [socket, setSocket] = useState<Socket | null>(null)
   const [phase, setPhase] = useState<'lobby' | 'waiting' | 'arena'>('lobby')
   const [arenaMatchId, setArenaMatchId] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [myMark, setMyMark] = useState<number | null>(null)
+  const [turn, setTurn] = useState<boolean | null>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -45,6 +48,12 @@ function App() {
         <WaitingLobbyScreen
           matchId={arenaMatchId}
           socket={socket}
+          userId={userId}
+          myMark={myMark}
+          turn={turn}
+          setUserId={setUserId}
+          setMyMark={setMyMark}
+          setTurn={setTurn}
           onBackToFindMatch={() => {
             setArenaMatchId(null)
             setPhase('lobby')
@@ -52,10 +61,15 @@ function App() {
           onEnterArena={() => setPhase('arena')}
         />
       )}
-
-      {session && socket && phase === 'arena' && (
+      {session?.user_id && socket && phase === 'arena' && (
         <ArenaGame
           matchId={arenaMatchId}
+          socket={socket}
+          userId={session.user_id}
+          myMark={myMark}
+          turn={turn}
+          setMyMark={setMyMark}
+          setTurn={setTurn}
           onBackToLobby={() => {
             setArenaMatchId(null)
             setPhase('lobby')

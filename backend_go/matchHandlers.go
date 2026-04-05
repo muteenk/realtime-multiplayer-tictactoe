@@ -15,6 +15,16 @@ type MatchHandler struct {
 	unmarshaler *protojson.UnmarshalOptions
 }
 
+type GameUpdateMessage struct {
+	Board      []config.MarkMove            `json:"board"`
+	MarkToMove config.MarkMove              `json:"markToMove"`
+	Presences  map[string]config.MarkMove   `json:"presences"`
+}
+
+type GameDoneMessage struct {
+	winner config.MarkMove
+}
+
 type MatchState struct {
 	joinsInProgress int
 	presences       map[string]runtime.Presence
@@ -203,10 +213,22 @@ func (m *MatchHandler) MatchLoop(
 			marks = marks[1:]
 		}
 
+		startMsg := GameUpdateMessage{
+			Board:      s.board,
+			MarkToMove: s.markToMove,
+			Presences:  s.playerMarks,
+		}
+
+		data, err := json.Marshal(startMsg)
+		if err != nil {
+			logger.Error("Failed to marshal start message: %s", err)
+			return s
+		}
+
 		// Broadcast the start message to all players
 		dispatcher.BroadcastMessage(
 			int64(config.OpCode_OPCODE_START),
-			nil, activePresences, nil, true,
+			data, activePresences, nil, true,
 		)
 
 		return s
@@ -276,9 +298,17 @@ func (m *MatchHandler) MatchLoop(
 
 			// Check for win
 			if s.checkForWinner(mark) {
+				doneMsg := GameDoneMessage{
+					winner: mark,
+				}
+				data, err := json.Marshal(doneMsg)
+				if err != nil {
+					logger.Error("Failed to marshal done message: %s", err)
+					continue
+				}
 				dispatcher.BroadcastMessage(
 					int64(config.OpCode_OPCODE_DONE),
-					nil, []runtime.Presence{msg}, nil, true,
+					data, s.getActivePresences(), nil, true,
 				)
 				s.gameRunning = false
 				s.winner = mark
@@ -291,6 +321,21 @@ func (m *MatchHandler) MatchLoop(
 			case config.Mark_MARK_O:
 				s.markToMove = config.Mark_MARK_X
 			}
+
+			updateMsg := GameUpdateMessage{
+				Board:      s.board,
+				MarkToMove: s.markToMove,
+				Presences:  s.playerMarks,
+			}
+			data, err := json.Marshal(updateMsg)
+			if err != nil {
+				logger.Error("Failed to marshal update message: %s", err)
+				continue
+			}
+			dispatcher.BroadcastMessage(
+				int64(config.OpCode_OPCODE_UPDATE),
+				data, s.getActivePresences(), nil, true,
+			)
 
 		default:
 			logger.Error("Received unknown message type: %d", msg.GetOpCode())
