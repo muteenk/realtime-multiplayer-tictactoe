@@ -1,5 +1,7 @@
 package config
 
+var WaitingMatchId string = ""
+
 type OpCode int64
 
 const (

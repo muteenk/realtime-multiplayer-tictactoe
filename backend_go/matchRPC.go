@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 
+	"backend_go/config"
+
 	"github.com/heroiclabs/nakama-common/runtime"
 )
 
@@ -31,6 +33,18 @@ func addMatch(
 	return matchId, nil
 }
 
+func jsonErrorResponse(message string) (string, error) {
+	response := map[string]string{
+		"success": "false",
+		"error":   message,
+	}
+	data, err := json.Marshal(response)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
 func RpcFindMatch(
 	ctx context.Context,
 	logger runtime.Logger,
@@ -40,41 +54,23 @@ func RpcFindMatch(
 ) (string, error) {
 	var response map[string]string
 
-	newMatchId := ""
-	if len(matches) > 0 {
-		for i := range matches {
-			if matches[i].presences < 2 {
-				matches[i].presences++
-				newMatchId = matches[i].matchId
-				break
-			}
-		}
-	}
-
-	logger.Info("New match ID: %s", newMatchId)
-
-	if newMatchId == "" {
+	matchId := ""
+	if config.WaitingMatchId == "" {
 		var err error
-		newMatchId, err = addMatch(ctx, nk)
+		matchId, err = addMatch(ctx, nk)
 		if err != nil {
 			logger.Error("Error adding match: %v", err)
-			response = map[string]string{
-				"success": "false",
-				"error":   err.Error(),
-			}
-			data, err := json.Marshal(response)
-			if err != nil {
-				return "", err
-			}
-			return string(data), nil
+			return jsonErrorResponse(err.Error())
 		}
+		config.WaitingMatchId = matchId
+	} else {
+		matchId = config.WaitingMatchId
+		config.WaitingMatchId = ""
 	}
-
-	logger.Info("New match ID 2: %s", newMatchId)
 
 	response = map[string]string{
 		"success": "true",
-		"matchId": newMatchId,
+		"matchId": matchId,
 	}
 
 	data, err := json.Marshal(response)

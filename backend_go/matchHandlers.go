@@ -7,12 +7,9 @@ import (
 	"encoding/json"
 
 	"github.com/heroiclabs/nakama-common/runtime"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type MatchHandler struct {
-	marshaler   *protojson.MarshalOptions
-	unmarshaler *protojson.UnmarshalOptions
 }
 
 type GameUpdateMessage struct {
@@ -121,9 +118,9 @@ func (m *MatchHandler) MatchJoin(
 	nk runtime.NakamaModule,
 	dispatcher runtime.MatchDispatcher,
 	tick int64,
-	state interface{},
+	state any,
 	presences []runtime.Presence,
-) interface{} {
+) any {
 	s := state.(*MatchState)
 	for _, p := range presences {
 		s.presences[p.GetUserId()] = p
@@ -139,9 +136,9 @@ func (m *MatchHandler) MatchLeave(
 	nk runtime.NakamaModule,
 	dispatcher runtime.MatchDispatcher,
 	tick int64,
-	state interface{},
+	state any,
 	presences []runtime.Presence,
-) interface{} {
+) any {
 	s := state.(*MatchState)
 	for _, presence := range presences {
 		s.presences[presence.GetUserId()] = nil
@@ -160,6 +157,7 @@ func (m *MatchHandler) MatchLeave(
 			nil, remainingPlayers, nil, true,
 		)
 	}
+	config.WaitingMatchId = ""
 	return s
 }
 
@@ -273,6 +271,7 @@ func (m *MatchHandler) MatchLoop(
 			s.gameRunning = false
 			s.gameOver = true
 			s.winner = config.Mark_MARK_UNSPECIFIED
+			config.WaitingMatchId = ""
 			return s
 		}
 	}
@@ -352,6 +351,7 @@ func (m *MatchHandler) MatchLoop(
 				s.gameRunning = false
 				s.gameOver = true
 				s.winner = mark
+				config.WaitingMatchId = ""
 				return s
 			}
 
