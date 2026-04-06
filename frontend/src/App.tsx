@@ -46,7 +46,7 @@ function App() {
   const nowSec = Math.floor(Date.now() / 1000)
   const isSessionActive = Boolean(session?.token) && !(session?.isexpired(nowSec) ?? true)
 
-  const showConnectionScreen = isConnecting || !session || !socket || !isSessionActive
+  const showConnectionScreen = isConnecting || !session || !socket
 
   if (showConnectionScreen) {
     return (

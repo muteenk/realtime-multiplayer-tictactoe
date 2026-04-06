@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import type { Socket } from '@heroiclabs/nakama-js'
 import './ArenaGame.css'
 
@@ -69,6 +69,7 @@ export function ArenaGame({
   const [opponentLeft, setOpponentLeft] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [winner, setWinner] = useState<number | null>(null)
+  const [pendingMoveIndex, setPendingMoveIndex] = useState<number | null>(null)
 
   const isMyTurn = () => {
     if (!myMark || !turn || gameDone || opponentLeft) return false
@@ -108,6 +109,8 @@ export function ArenaGame({
     return isMyTurn() ? 'Your move' : 'Opponent move'
   }
 
+  const pendingMarkSymbol: Mark = myMark === 1 ? 'X' : 'O'
+
   useEffect(() => {
     if (!matchId) return
 
@@ -133,14 +136,17 @@ export function ArenaGame({
       if (msg.op_code === OP_CODE_OPPONENT_LEFT) {
         setOpponentLeft(true)
         setGameDone(true)
+        setPendingMoveIndex(null)
         return
       }
       if (msg.op_code === OP_CODE_REJECTED) {
         setError('Move rejected by server')
+        setPendingMoveIndex(null)
         return
       }
       if (msg.op_code === OP_CODE_DONE) {
         setGameDone(true)
+        setPendingMoveIndex(null)
         try {
           const text = decoder.decode(msg.data)
           const parsed = JSON.parse(text) as GameDonePayload
@@ -163,6 +169,7 @@ export function ArenaGame({
         const text = decoder.decode(msg.data)
         const parsed = JSON.parse(text) as ServerPayload
         applyPayload(parsed)
+        setPendingMoveIndex(null)
         if (msg.op_code === OP_CODE_START) {
           setGameDone(false)
           setOpponentLeft(false)
@@ -186,10 +193,12 @@ export function ArenaGame({
       if (board[index]) return
 
       try {
+        setPendingMoveIndex(index)
         const payload = new TextEncoder().encode(JSON.stringify({ position: index }))
         await socket.sendMatchState(matchId, OP_CODE_MOVE, payload)
       } catch (e) {
         console.error('Failed to send move', e)
+        setPendingMoveIndex(null)
         setError('Failed to send move')
       }
     },
@@ -276,6 +285,28 @@ export function ArenaGame({
               const pos = String(i + 1)
               const mark = cell ? `, ${cell}` : ', empty'
               const isWinningCell = winningLine?.includes(i) ?? false
+              const winningClass = isWinningCell
+                ? 'board-cell-win border-amber-400/60 bg-amber-500/10 text-amber-100'
+                : ''
+              const xClass = cell === 'X'
+                ? 'text-cyan-300 [text-shadow:0_0_24px_rgba(34,211,238,0.55)]'
+                : ''
+              const oClass = cell === 'O'
+                ? 'text-fuchsia-300 [text-shadow:0_0_24px_rgba(232,121,249,0.55)]'
+                : ''
+              const pendingClass = pendingMoveIndex === i
+                ? 'board-cell-pending border-cyan-300/45'
+                : ''
+              let cellContent: ReactNode = null
+              if (cell) {
+                cellContent = <span className="board-cell-mark">{cell}</span>
+              } else if (pendingMoveIndex === i) {
+                cellContent = (
+                  <span className="board-cell-pending-dot" aria-hidden>
+                    {pendingMarkSymbol}
+                  </span>
+                )
+              }
               return (
                 <button
                   key={CELL_KEYS[i]}
@@ -287,7 +318,8 @@ export function ArenaGame({
                     gameDone ||
                     opponentLeft ||
                     !myMark ||
-                    !isMyTurn()
+                    !isMyTurn() ||
+                    pendingMoveIndex !== null
                   }
                   onClick={() => play(i)}
                   className={[
@@ -296,22 +328,15 @@ export function ArenaGame({
                     'hover:border-cyan-400/35 hover:shadow-[0_0_28px_-4px_rgba(34,211,238,0.25)]',
                     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400/60',
                     'disabled:cursor-default disabled:hover:border-cyan-500/15 disabled:hover:shadow-none',
-                    isWinningCell
-                      ? 'board-cell-win border-amber-400/60 bg-amber-500/10 text-amber-100'
-                      : '',
-                    cell === 'X'
-                      ? 'text-cyan-300 [text-shadow:0_0_24px_rgba(34,211,238,0.55)]'
-                      : '',
-                    cell === 'O'
-                      ? 'text-fuchsia-300 [text-shadow:0_0_24px_rgba(232,121,249,0.55)]'
-                      : '',
+                    winningClass,
+                    xClass,
+                    oClass,
+                    pendingClass,
                   ]
                     .filter(Boolean)
                     .join(' ')}
                 >
-                  {cell ? (
-                    <span className="board-cell-mark">{cell}</span>
-                  ) : null}
+                  {cellContent}
                 </button>
               )
             })}
