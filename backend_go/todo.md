@@ -1,7 +1,8 @@
 # Remaining tasks
 
 - [ x ] stablize game play flow
-- Multiple concurrent games
+- [ x ] Multiple concurrent games
+- [ ] Play again logic
 - time based turns
 - readme docs
 - landing screen
