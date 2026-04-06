@@ -47,7 +47,7 @@ export function FindMatchScreen({ session, isSessionActive, onEnterArena }: Prop
           Find a match
         </h1>
         <p className="mt-2 text-sm text-slate-400">
-          Calls server RPC <span className="font-mono text-cyan-300/90">find_match_js</span>
+          Enter the arena by <span className="font-mono text-cyan-300/90">finding a match</span>
         </p>
       </header>
 
@@ -93,10 +93,6 @@ export function FindMatchScreen({ session, isSessionActive, onEnterArena }: Prop
               </button>
             )}
           </div>
-        )}
-
-        {matchId === null && (
-          <p className="text-sm text-mute">Server returned no match IDs.</p>
         )}
       </div>
     </div>
