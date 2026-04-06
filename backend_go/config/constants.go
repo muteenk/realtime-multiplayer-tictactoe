@@ -29,10 +29,6 @@ const (
 	Mark_MARK_O           MarkMove = 2
 )
 
-type Move struct {
-	Position int `json:"position"`
-}
-
 // Constants for the match
 const (
 	MaxEmptyTicks int = 150

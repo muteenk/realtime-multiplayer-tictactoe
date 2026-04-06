@@ -71,6 +71,9 @@ function App() {
           onBackToLobby={() => {
             setArenaMatchId(null)
             setPhase('lobby')
+            setMyMark(null)
+            setTurn(null)
+            setArenaMatchId(null)
           }}
         />
       )}

@@ -9,9 +9,14 @@ import (
 	"github.com/heroiclabs/nakama-common/runtime"
 )
 
-type MatchHandler struct {
+type MatchHandler struct{}
+
+// MESSAGES FROM CLIENT
+type Move struct {
+	Position int `json:"position"`
 }
 
+// MESSAGES TO CLIENT
 type GameUpdateMessage struct {
 	Board      []config.MarkMove          `json:"board"`
 	MarkToMove config.MarkMove            `json:"markToMove"`
@@ -22,56 +27,7 @@ type GameDoneMessage struct {
 	Winner config.MarkMove `json:"winner"`
 }
 
-type MatchState struct {
-	joinsInProgress int
-	presences       map[string]runtime.Presence
-	gameRunning     bool
-	gameOver        bool
-	emptyTicks      int
-
-	board       []config.MarkMove
-	playerMarks map[string]config.MarkMove
-	markToMove  config.MarkMove
-	winner      config.MarkMove
-}
-
-func (s *MatchState) ConnectedCount() int {
-	count := 0
-	for _, presence := range s.presences {
-		if presence != nil {
-			count++
-		}
-	}
-	return count
-}
-
-func (s *MatchState) checkForWinner(movedMark config.MarkMove) bool {
-	matchFound := false
-	for _, winPos := range config.WinningPositions {
-		for _, pos := range winPos {
-			if s.board[pos] != movedMark {
-				matchFound = false
-				break
-			} else {
-				matchFound = true
-			}
-		}
-		if matchFound {
-			break
-		}
-	}
-	return matchFound
-}
-
-func (s *MatchState) getActivePresences() []runtime.Presence {
-	var activePresences []runtime.Presence
-	for _, presence := range s.presences {
-		if presence != nil {
-			activePresences = append(activePresences, presence)
-		}
-	}
-	return activePresences
-}
+// --- MATCH HANDLERS --- //
 
 func (m *MatchHandler) MatchInit(
 	ctx context.Context,
@@ -82,9 +38,8 @@ func (m *MatchHandler) MatchInit(
 ) (interface{}, int, string) {
 	state := &MatchState{
 		presences: make(map[string]runtime.Presence, 2),
-	} // Define custom MatchState in the code as per your game's requirements
-	// tickRate := config.TickRate
-	label := "skill=100-150" // Custom label that will be used to filter match listings.
+	}
+	label := "tictactoe-server"
 
 	return state, config.TickRate, label
 }
@@ -156,8 +111,17 @@ func (m *MatchHandler) MatchLeave(
 			int64(config.OpCode_OPCODE_OPPONENT_LEFT),
 			nil, remainingPlayers, nil, true,
 		)
+	} else {
+		// If the waiting slot points to this match, clear it so future
+		// players don't get assigned to a terminated match.
+		if matchID, ok := ctx.Value(runtime.RUNTIME_CTX_MATCH_ID).(string); ok {
+			if config.WaitingMatchId == matchID {
+				config.WaitingMatchId = ""
+			}
+		}
+		return nil
 	}
-	config.WaitingMatchId = ""
+
 	return s
 }
 
@@ -182,16 +146,16 @@ func (m *MatchHandler) MatchLoop(
 	}
 
 	if !s.gameRunning {
-		// Purge any disconnected players
-		for userIdx, presence := range s.presences {
-			if presence == nil {
-				delete(s.presences, userIdx)
-			}
-			dispatcher.BroadcastMessage(
-				int64(config.OpCode_OPCODE_OPPONENT_LEFT),
-				nil, []runtime.Presence{presence}, nil, true,
-			)
-		}
+		// // Purge any disconnected players
+		// for userIdx, presence := range s.presences {
+		// 	if presence == nil {
+		// 		delete(s.presences, userIdx)
+		// 	}
+		// 	dispatcher.BroadcastMessage(
+		// 		int64(config.OpCode_OPCODE_OPPONENT_LEFT),
+		// 		nil, []runtime.Presence{presence}, nil, true,
+		// 	)
+		// }
 
 		activePresences := s.getActivePresences()
 
@@ -201,7 +165,7 @@ func (m *MatchHandler) MatchLoop(
 		}
 		// Do not auto-restart once a game is finished.
 		if s.gameOver {
-			return s
+			return nil
 		}
 
 		// Initialize the game state
@@ -271,8 +235,7 @@ func (m *MatchHandler) MatchLoop(
 			s.gameRunning = false
 			s.gameOver = true
 			s.winner = config.Mark_MARK_UNSPECIFIED
-			config.WaitingMatchId = ""
-			return s
+			return nil
 		}
 	}
 
@@ -289,7 +252,7 @@ func (m *MatchHandler) MatchLoop(
 				continue
 			}
 
-			move := &config.Move{}
+			move := &Move{}
 			err := json.Unmarshal(msg.GetData(), move)
 			if err != nil {
 				logger.Error("Failed to unmarshal move: %s", err)
@@ -351,8 +314,7 @@ func (m *MatchHandler) MatchLoop(
 				s.gameRunning = false
 				s.gameOver = true
 				s.winner = mark
-				config.WaitingMatchId = ""
-				return s
+				return nil
 			}
 
 		default:

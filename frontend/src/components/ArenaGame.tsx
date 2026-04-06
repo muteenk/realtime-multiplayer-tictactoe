@@ -129,6 +129,7 @@ export function ArenaGame({
 
     socket.onmatchdata = (msg) => {
       if (msg.match_id !== matchId) return
+      console.log('msg', msg)
       if (msg.op_code === OP_CODE_OPPONENT_LEFT) {
         setOpponentLeft(true)
         return
@@ -220,13 +221,18 @@ export function ArenaGame({
               className="max-w-[min(100%,14rem)] truncate font-semibold tracking-wide text-slate-100"
               title={matchId ?? undefined}
             >
-              {matchId ?? 'Local practice'}
+              {matchId ?? 'Find a match to start playing.'}
             </span>
           </div>
           {onBackToLobby && (
             <button
               type="button"
-              onClick={onBackToLobby}
+              onClick={async () => {
+                if (matchId && socket){
+                  await socket.leaveMatch(matchId)
+                } 
+                onBackToLobby?.()
+              }}
               className="rounded-full border border-white/15 bg-black/30 px-4 py-2 text-xs font-semibold text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-200"
             >
               Find match

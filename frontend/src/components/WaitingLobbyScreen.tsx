@@ -81,13 +81,20 @@ export function WaitingLobbyScreen({
         </p>
 
         <div className="mt-6 flex items-center justify-center gap-3">
-          <button
-            type="button"
-            onClick={onBackToFindMatch}
-            className="rounded-xl border border-white/15 bg-black/30 px-4 py-2.5 text-xs font-semibold text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-200"
-          >
-            Back to find match
-          </button>
+          {onBackToFindMatch && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (matchId && socket){
+                  await socket.leaveMatch(matchId)
+                } 
+                onBackToFindMatch?.()
+              }}
+              className="rounded-xl border border-white/15 bg-black/30 px-4 py-2.5 text-xs font-semibold text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-200"
+            >
+              Back to find match
+            </button>
+          )}
           {/* <button
             type="button"
             onClick={onEnterArena}
