@@ -4,11 +4,11 @@ import { findMatchRpc } from '../lib/nakama/gameRpc'
 
 type Props = Readonly<{
   session: Session
+  isSessionActive: boolean
   onEnterArena: (matchId: string) => void
 }>
 
-export function FindMatchScreen({ session, onEnterArena }: Props) {
-  const [fast, setFast] = useState(false)
+export function FindMatchScreen({ session, isSessionActive, onEnterArena }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [matchId, setMatchId] = useState<string | null>(null)
@@ -16,9 +16,15 @@ export function FindMatchScreen({ session, onEnterArena }: Props) {
   const handleFindMatch = useCallback(async () => {
     setError(null)
     setMatchId(null)
+
+    if (!isSessionActive) {
+      setError('Session is not active. Please reconnect and try again.')
+      return
+    }
+
     setLoading(true)
     try {
-      const res = await findMatchRpc(session, { fast })
+      const res = await findMatchRpc(session, { fast: false })
       setMatchId(res.matchId)
       onEnterArena(res.matchId)
     } catch (e) {
@@ -27,7 +33,7 @@ export function FindMatchScreen({ session, onEnterArena }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [session, fast])
+  }, [session, isSessionActive, onEnterArena])
 
   const primaryId = matchId
 
@@ -47,19 +53,9 @@ export function FindMatchScreen({ session, onEnterArena }: Props) {
 
       <div className="rounded-3xl border border-arena-border bg-arena-panel p-5 shadow-[0_25px_80px_-20px_rgba(0,0,0,0.65)] backdrop-blur-xl sm:p-7">
         <div className="mb-6 flex flex-col gap-4 border-b border-white/5 pb-6">
-          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-            <span className="text-sm font-medium text-slate-200">Fast timers</span>
-            <input
-              type="checkbox"
-              checked={fast}
-              onChange={(e) => setFast(e.target.checked)}
-              className="size-4 rounded border-slate-500 text-cyan-500 focus:ring-cyan-500/40"
-            />
-          </label>
-
           <button
             type="button"
-            disabled={loading}
+            disabled={loading || !isSessionActive}
             onClick={handleFindMatch}
             className="rounded-xl border border-cyan-500/35 bg-cyan-500/15 px-5 py-3 text-sm font-semibold text-cyan-100 shadow-[0_0_28px_-4px_rgba(34,211,238,0.35)] transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50"
           >

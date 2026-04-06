@@ -91,7 +91,7 @@ export function ArenaGame({
   if (winner === 0) {
     resultToneClass = 'border border-slate-400/30 bg-slate-500/10 text-slate-200'
     resultText = 'Match ended in a draw.'
-  } else if (winner === myMark) {
+  } else if (winner === myMark || opponentLeft) {
     resultToneClass = 'border border-emerald-400/40 bg-emerald-500/15 text-emerald-200'
     resultText = 'You won this round!'
   }
@@ -132,6 +132,7 @@ export function ArenaGame({
       console.log('msg', msg)
       if (msg.op_code === OP_CODE_OPPONENT_LEFT) {
         setOpponentLeft(true)
+        setGameDone(true)
         return
       }
       if (msg.op_code === OP_CODE_REJECTED) {
