@@ -213,13 +213,13 @@ export function ArenaGame({
         </header>
 
         <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
-          <div className="inline-flex items-center gap-2 rounded-full border border-arena-border bg-arena-panel px-4 py-2 text-sm text-slate-300 shadow-[0_0_40px_-12px_rgba(99,102,241,0.35)] backdrop-blur-md">
-            <span className="arena-live-dot size-2 rounded-full bg-emerald-400" aria-hidden />
-            <span className="font-mono text-xs tracking-wider text-slate-400">
+          <div className="inline-flex max-w-full items-start gap-2 rounded-2xl border border-arena-border bg-arena-panel px-3 py-2 text-sm text-slate-300 shadow-[0_0_40px_-12px_rgba(99,102,241,0.35)] backdrop-blur-md sm:items-center sm:rounded-full sm:px-4">
+            <span className="arena-live-dot mt-1 size-2 rounded-full bg-emerald-400 sm:mt-0" aria-hidden />
+            <span className="shrink-0 font-mono text-xs tracking-wider text-slate-400">
               MATCH
             </span>
             <span
-              className="max-w-[min(100%,14rem)] truncate font-semibold tracking-wide text-slate-100"
+              className="max-w-[min(100%,18rem)] break-all font-mono text-xs leading-5 text-slate-100 sm:text-sm"
               title={matchId ?? undefined}
             >
               {matchId ?? 'Find a match to start playing.'}
