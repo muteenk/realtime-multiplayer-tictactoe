@@ -11,4 +11,4 @@ console:
   password: "password"
 cors:
   allow_origins:
-    - "*"
+    - "https://realtime-multiplayer-tictactoe.vercel.app/"
