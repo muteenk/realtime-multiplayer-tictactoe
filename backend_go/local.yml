@@ -9,3 +9,6 @@ socket:
 console:
   username: "admin"
   password: "password"
+cors:
+  allow_origins:
+    - "*"
