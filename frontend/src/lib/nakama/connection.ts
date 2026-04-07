@@ -14,7 +14,7 @@ export const createSession = async () => {
 
 export const connectSocket = async (session: any) => {
     try {
-        const socket = client.createSocket();
+        const socket = client.createSocket(true);
         await socket.connect(session, true);
         return socket;
     } catch (error) {
