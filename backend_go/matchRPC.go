@@ -45,6 +45,24 @@ func jsonErrorResponse(message string) (string, error) {
 	return string(data), nil
 }
 
+func RpcHealthCheck(
+	ctx context.Context,
+	logger runtime.Logger,
+	db *sql.DB,
+	nk runtime.NakamaModule,
+	payload string,
+) (string, error) {
+	response := map[string]string{
+		"status": "ok",
+	}
+	data, err := json.Marshal(response)
+	if err != nil {
+		return "", err
+	}
+	logger.Info("Health check called")
+	return string(data), nil
+}
+
 func RpcFindMatch(
 	ctx context.Context,
 	logger runtime.Logger,
