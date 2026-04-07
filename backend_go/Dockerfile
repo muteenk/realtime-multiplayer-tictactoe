@@ -12,8 +12,8 @@ COPY local.yml /nakama/data/local.yml
 
 ENTRYPOINT ["/bin/sh", "-c"]
 
-CMD echo "DATABASE_URL=$DATABASE_URL" && \
-    /nakama/nakama \
-    --name nakama1 \
-    --database.address "$DATABASE_URL" \
-    --logger.level DEBUG
+CMD exec /nakama/nakama \
+  --name nakama1 \
+  --database.address "$DATABASE_URL" \
+  --config /nakama/data/local.yml \
+  --logger.level DEBUG
