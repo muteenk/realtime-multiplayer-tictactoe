@@ -38,7 +38,6 @@ export function WaitingLobbyScreen({
         if (msg.op_code === 1) {
           const text = decoder.decode(msg.data)
           const parsed = JSON.parse(text)
-          console.log('parsed', parsed)
           let mark = parsed.presences[userId as keyof typeof parsed.presences] ?? 0
           setMyMark(mark)
           setTurn(parsed.markToMove ?? 0)

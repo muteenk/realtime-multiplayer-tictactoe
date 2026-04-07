@@ -132,7 +132,6 @@ export function ArenaGame({
 
     socket.onmatchdata = (msg) => {
       if (msg.match_id !== matchId) return
-      console.log('msg', msg)
       if (msg.op_code === OP_CODE_OPPONENT_LEFT) {
         setOpponentLeft(true)
         setGameDone(true)

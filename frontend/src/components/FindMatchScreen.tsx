@@ -4,11 +4,10 @@ import { findMatchRpc } from '../lib/nakama/gameRpc'
 
 type Props = Readonly<{
   session: Session
-  isSessionActive: boolean
   onEnterArena: (matchId: string) => void
 }>
 
-export function FindMatchScreen({ session, isSessionActive, onEnterArena }: Props) {
+export function FindMatchScreen({ session, onEnterArena }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [matchId, setMatchId] = useState<string | null>(null)
@@ -17,10 +16,10 @@ export function FindMatchScreen({ session, isSessionActive, onEnterArena }: Prop
     setError(null)
     setMatchId(null)
 
-    if (!isSessionActive) {
-      setError('Session is not active. Please reconnect and try again.')
-      return
-    }
+    // if (!isSessionActive) {
+    //   setError('Session is not active. Please reconnect and try again.')
+    //   return
+    // }
 
     setLoading(true)
     try {
@@ -33,7 +32,7 @@ export function FindMatchScreen({ session, isSessionActive, onEnterArena }: Prop
     } finally {
       setLoading(false)
     }
-  }, [session, isSessionActive, onEnterArena])
+  }, [session, onEnterArena])
 
   const primaryId = matchId
 
@@ -55,7 +54,7 @@ export function FindMatchScreen({ session, isSessionActive, onEnterArena }: Prop
         <div className="mb-6 flex flex-col gap-4 border-b border-white/5 pb-6">
           <button
             type="button"
-            disabled={loading || !isSessionActive}
+            disabled={loading}
             onClick={handleFindMatch}
             className="rounded-xl border border-cyan-500/35 bg-cyan-500/15 px-5 py-3 text-sm font-semibold text-cyan-100 shadow-[0_0_28px_-4px_rgba(34,211,238,0.35)] transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50"
           >

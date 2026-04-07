@@ -18,7 +18,6 @@ export async function findMatchRpc(
   input: RpcFindMatchRequest,
 ): Promise<RpcFindMatchResponse> {
   const res = await client.rpc(session, FIND_MATCH_RPC_ID, input)
-  console.log(res)
   if (res.payload === undefined) {
     throw new Error('RPC returned no payload')
   }

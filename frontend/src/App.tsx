@@ -67,7 +67,7 @@ function App() {
       {session && phase === 'lobby' && (
         <FindMatchScreen
           session={session}
-          isSessionActive={isSessionActive}
+          // isSessionActive={isSessionActive}
           onEnterArena={(matchId) => {
             setArenaMatchId(matchId)
             setPhase('waiting')
