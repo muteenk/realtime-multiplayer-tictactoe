@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { Session } from '@heroiclabs/nakama-js'
+import { describeError } from '../lib/errors'
 import { findMatchRpc } from '../lib/nakama/gameRpc'
 
 type Props = Readonly<{
@@ -16,19 +17,13 @@ export function FindMatchScreen({ session, onEnterArena }: Props) {
     setError(null)
     setMatchId(null)
 
-    // if (!isSessionActive) {
-    //   setError('Session is not active. Please reconnect and try again.')
-    //   return
-    // }
-
     setLoading(true)
     try {
-      const res = await findMatchRpc(session, { fast: false })
+      const res = await findMatchRpc(session)
       setMatchId(res.matchId)
       onEnterArena(res.matchId)
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Find match failed'
-      setError(message)
+      setError(describeError(e))
     } finally {
       setLoading(false)
     }

@@ -248,7 +248,11 @@ export function ArenaGame({
                   return
                 }
                 if (matchId && socket){
-                  await socket.leaveMatch(matchId)
+                  try {
+                    await socket.leaveMatch(matchId)
+                  } catch (error) {
+                    console.error('Error leaving match', error)
+                  }
                 } 
                 onBackToLobby?.()
               }}

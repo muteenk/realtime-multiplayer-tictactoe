@@ -92,7 +92,11 @@ export function WaitingLobbyScreen({
                   return
                 }
                 if (matchId && socket){
-                  await socket.leaveMatch(matchId)
+                  try {
+                    await socket.leaveMatch(matchId)
+                  } catch (error) {
+                    console.error('Error leaving match', error)
+                  }
                 } 
                 onBackToFindMatch?.()
               }}
