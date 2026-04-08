@@ -89,6 +89,18 @@ export function FindMatchScreen({ session, onEnterArena }: Props) {
           </div>
         )}
       </div>
+
+      <footer className="mt-auto pt-10 text-center text-xs text-slate-600">
+        Built by{' '}
+        <a
+          href="https://github.com/muteenk"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-slate-400 transition hover:text-cyan-300"
+        >
+          Muteen Kundangar
+        </a>
+      </footer>
     </div>
   )
 }
