@@ -1,6 +1,6 @@
 # Multiplayer Tic-Tac-Toe
 
-Real-time multiplayer Tic-Tac-Toe with a **server-authoritative** backend: game rules, turns, and outcomes live in a [Nakama](https://heroiclabs.com/nakama/) Go runtime plugin; the React + TypeScript client only renders state and sends moves over WebSockets. Matchmaking is a small RPC-backed queue; the focus is reliable lifecycle handling and consistent state for both players.
+Real-time multiplayer Tic-Tac-Toe with a **server-authoritative** backend: game rules, turns, and outcomes live entirely in a [Nakama](https://heroiclabs.com/nakama/) Go runtime plugin; the React + TypeScript client only renders state and sends moves over WebSockets. Matchmaking is an RPC-backed FIFO queue; the focus is reliable lifecycle handling and consistent game state for both players under adverse conditions.
 
 ---
 
@@ -10,14 +10,14 @@ Real-time multiplayer Tic-Tac-Toe with a **server-authoritative** backend: game 
 |---|---|
 | Frontend | React, TypeScript, Vite, Tailwind CSS |
 | Backend | [Nakama](https://heroiclabs.com/nakama/) with Go runtime plugin |
-| Database | PostgreSQL (used by Nakama) |
+| Database | PostgreSQL (managed by Nakama) |
 | Realtime | WebSockets (Nakama socket API) |
 | Matchmaking | Custom RPC (`find_match`) + in-memory waiting match id |
 | Deployment | [Vercel](https://vercel.com) (frontend) · [DigitalOcean](https://www.digitalocean.com/) (Nakama + Postgres) |
 
 ---
 
-## Local setup
+## Local Setup
 
 ### Prerequisites
 
@@ -32,22 +32,20 @@ cd realtime-multiplayer-tictactoe/frontend
 pnpm install
 ```
 
-Create `frontend/.env.local` so Vite can reach Nakama (values are read at dev/build time; see `frontend/src/lib/nakama/client.ts`):
+Create `frontend/.env.local` so Vite can reach Nakama (values are embedded at build time; see `frontend/src/lib/nakama/client.ts`):
 
-```.env.local
+```env
 VITE_NAKAMA_HOST=127.0.0.1
 VITE_NAKAMA_SSL=false
 ```
 
-Optional: For a remote HTTPS Nakama URL, set `VITE_NAKAMA_SSL=true` and the correct host.
-
-Then:
+For a remote HTTPS host: set `VITE_NAKAMA_SSL=true` and the correct hostname. Port defaults to `443` when SSL is enabled.
 
 ```bash
 pnpm dev
 ```
 
-The app is served at `http://localhost:5173` by default.
+App is served at `http://localhost:5173`.
 
 ### Run Nakama + PostgreSQL (backend)
 
@@ -57,9 +55,9 @@ docker compose up --build
 ```
 
 - **HTTP API / WebSocket:** `http://127.0.0.1:7350`
-- **Console:** `http://127.0.0.1:7351` (credentials from `backend_go/local.yml`)
+- **Console:** `http://127.0.0.1:7351` (credentials in `backend_go/local.yml`)
 
-After changing Go code, rebuild the plugin and restart Nakama:
+After changing Go code, rebuild the plugin and restart:
 
 ```bash
 docker compose run --rm builder
@@ -70,88 +68,124 @@ docker compose restart nakama
 
 ## Deployment
 
-This project is deployed as follows:
-
-| Piece | Where it runs | Live URL |
+| Piece | Platform | Live URL |
 |---|---|---|
-| Frontend | [Vercel](https://vercel.com) | [https://realtime-multiplayer-tictactoe.vercel.app/](https://realtime-multiplayer-tictactoe.vercel.app/) |
-| Nakama + PostgreSQL | [DigitalOcean](https://www.digitalocean.com/) | [https://tictactoe.jiroshi.com/](https://tictactoe.jiroshi.com/) |
+| Frontend | [Vercel](https://vercel.com) | [realtime-multiplayer-tictactoe.vercel.app](https://realtime-multiplayer-tictactoe.vercel.app/) |
+| Nakama + PostgreSQL | [DigitalOcean](https://www.digitalocean.com/) | [tictactoe.jiroshi.com](https://tictactoe.jiroshi.com/) |
 
-The backend uses a subdomain on **`jiroshi.com`** because that domain was already owned for another personal project; pointing `tictactoe.jiroshi.com` at DigitalOcean avoids registering a separate domain and keeps DNS simple.
+The backend is served on a subdomain of **`jiroshi.com`** - a personal domain already in use - to avoid registering a separate domain for this project.
 
-**Production frontend env (Vercel):** point the app at the deployed Nakama host, e.g. `VITE_NAKAMA_HOST=tictactoe.jiroshi.com`, `VITE_NAKAMA_SSL=true` (and `VITE_NAKAMA_PORT` only if you are not on the default HTTPS port). Redeploy after changing `VITE_*` so Vite embeds the new values.
+**Production frontend env (Vercel):** set `VITE_NAKAMA_HOST=tictactoe.jiroshi.com` and `VITE_NAKAMA_SSL=true`. Redeploy after changing `VITE_*` vars so Vite embeds the updated values.
 
-**Health check RPC:** `health_check` can be used for uptime pings or cold-start wake against the backend base URL (e.g. `POST` to Nakama’s RPC endpoint for `health_check`, with the HTTP key your server expects).
-
-**Self-hosting:** you can still run the stack locally or on another host using `backend_go/docker-compose.yml`; expose **7350** (API + WebSocket) and optionally **7351** (console-restrict in production).
+**Health check:** the `health_check` RPC (`POST /v2/rpc/health_check`) returns `{"status":"ok"}` and is suitable for uptime monitoring or waking a cold-start instance.
 
 ---
 
 ## Architecture
 
-The server owns all game state. Clients send moves; the server validates, updates state, and broadcasts to everyone in the match. The UI is a thin layer over socket messages and RPC responses.
+The server owns all game state. Clients send intent; the server validates, mutates, and broadcasts. The frontend is a thin render layer over socket messages and RPC responses - it holds no authoritative state.
 
-```
-Client A                   Nakama Server                  Client B
-   |                            |                              |
-   |-- MOVE (opcode 4) -------> |                              |
-   |                      validate + update state              |
-   |<-- UPDATE (opcode 2) ----------------------------------> |
-   |              on win/draw: DONE (opcode 3)                 |
-```
+![Sequence diagram](./assets/sequence-diagram.png)
 
 | Opcode | Name | Direction | Role |
 |---|---|---|---|
-| 1 | `START` | Server → Client | Match started, initial state |
-| 2 | `UPDATE` | Server → Client | Board after a valid move |
-| 3 | `DONE` | Server → Client | Game over (win or draw) |
-| 4 | `MOVE` | Client → Server | Player move |
-| 5 | `REJECTED` | Server → Client | Invalid move |
-| 6 | `OPPONENT_LEFT` | Server → Client | Other player left |
+| 1 | `START` | Server → Client | Match started; carries initial board and mark assignments |
+| 2 | `UPDATE` | Server → Client | Board state after a valid move |
+| 3 | `DONE` | Server → Client | Game over (includes winner or draw) |
+| 4 | `MOVE` | Client → Server | Player submits a move |
+| 5 | `REJECTED` | Server → Client | Move was illegal (wrong turn, occupied cell) |
+| 6 | `OPPONENT_LEFT` | Server → Client | Other player disconnected |
 
 ---
 
-## Backend design decisions
+## Backend Design
 
-The backend is built so **truth lives in one place**: the server decides what is legal, what the board is, and when a match is over. Clients are untrusted inputs, not co-equal peers.
+The backend is built so **truth lives in one place**: the server decides what is legal, what the board is, and when a match ends. Clients are untrusted inputs, not co-equal peers.
 
-- **Server-authoritative by default** - The client never “wins” an argument about the rules. Move validation, turn order, and win/draw detection run only in the Go match handler, so a modified client cannot force illegal wins or rewrite history. That is the main defense against cheating and the main guarantee that both players see the same game.
+- **Server-authoritative by default** - Move validation, turn enforcement, and win/draw detection run only in the Go match handler. A modified client cannot force illegal wins or skip turns. This is the primary correctness guarantee, not a security afterthought.
 
-- **Nakama’s match lifecycle as the spine** - Game state is owned by the authoritative match (`MatchInit`, `MatchJoin`, `MatchLoop`, `MatchLeave`, termination), not scattered across custom tables or hand-rolled processes. Join, tick, and leave all go through one pipeline, which makes cleanup and reasoning about “what happens when someone drops?” tractable.
+- **Nakama's match lifecycle as the control spine** - All state transitions (join, tick, leave, termination) flow through `MatchInit` → `MatchLoop` → `MatchLeave`. There is no separate state machine or hand-rolled cleanup logic. This makes "what happens when someone drops?" a tractable question with a single answer: `MatchLeave` fires, the remaining player is notified, and the match is torn down.
 
-- **Intentionally minimal matchmaking (`WaitingMatchId`)** - For 1v1, a small FIFO queue is enough: first caller creates a match and waits, second caller consumes it. No heavyweight matcher service-less surface area, fewer failure modes, and a clear story for assignments and stale lobbies.
+- **Intentionally minimal matchmaking (`WaitingMatchId`)** - For 1v1, a FIFO queue is sufficient: the first caller creates a match and waits; the second caller consumes it. No external matcher service, no extra failure surface, and no ambiguity about stale lobbies. The tradeoff - no skill-based or preference-based pairing - is acceptable for this scope.
 
-- **Explicit phases: playing → game over → terminated** - Once there is a result, the match is finished in the server’s model: `gameOver` blocks further play, outcomes are broadcast, and the match can end. That avoids ambiguous “half-open” games and ghost matches that never close.
+- **Explicit phases: playing → game over → terminated** - `gameRunning` and `gameOver` are distinct flags. Once a result exists, the server stops accepting moves and the match ends cleanly. This prevents ambiguous half-open games and ghost matches.
 
-- **Reject early, apply never** - Invalid input (wrong turn, occupied square, moves after game over) returns `REJECTED` and **does not** touch persisted match state. The board only changes on paths the server has already validated.
-
----
-
-## Edge cases handled
-
-- Invalid moves (wrong turn, occupied cell) - rejected on the server.
-- Disconnect mid-game - remaining player notified (`OPPONENT_LEFT`).
-- Lobby leave before opponent joins - waiting match cleared and match torn down where implemented.
-- No moves after game over - server ignores further move messages.
-- Two players per match - enforced in match join / loop logic.
-- Session vs gameplay - new RPCs can be gated on session freshness without tearing down an active socket solely because the JWT expired (see app wiring).
+- **Reject early, apply never** - Invalid input (wrong turn, occupied square, moves after game over) returns `REJECTED` and does not touch match state. The board changes only on paths the server has validated.
 
 ---
 
-## Additional capabilities
+## Engineering Challenges
 
-- Multiple concurrent matches via Nakama’s per-match isolation.
-- Straightforward queue-style matchmaking for two players.
-- Clear UX for win, loss, draw, and opponent left; optional pending-move feedback for latency.
+This is not a tutorial CRUD app. The non-trivial parts:
+
+- **Consistency across two concurrent WebSocket streams** - Both players must see identical board state at all times. The server is the single writer; every `UPDATE` is a broadcast from a validated state transition, not a merge of two clients' views. Achieving this with Nakama's tick-based `MatchLoop` requires careful sequencing of reads and writes within a single goroutine.
+
+- **Lifecycle correctness under disconnect** - Players can drop at any point: during matchmaking, mid-game, or between rounds. Each scenario requires a different cleanup path. `MatchLeave` fires reliably, but the server must distinguish "player left intentionally" from "player will reconnect" - and currently it cannot (see Known Limitations).
+
+- **State divergence prevention** - The client sends a move and immediately shows a pending indicator, but the board does not update until the server broadcasts `UPDATE`. If the server rejects the move (or the message is lost), the client reverts. This eliminates the class of bugs where two clients reach different board states.
+
+---
+
+## Known Limitations
+
+These are deliberate scoping decisions, not oversights:
+
+- **No reconnection after disconnect** - If a player's connection drops mid-game, they cannot rejoin the same match. The opponent is immediately notified and the match is abandoned. Reconnection would require match state persistence and a re-join handshake, neither of which is implemented.
+
+- **Matchmaking state is in-memory and single-node** - The `WaitingMatchId` is a Go-level variable on one server instance. It is not persisted or coordinated across processes. Restarting Nakama loses any pending lobby. Two concurrent find-match requests on different instances would never pair.
+
+- **No match persistence** - Match history, results, and board snapshots are not written to the database. There is no replay, statistics, or audit trail.
+
+- **No authentication beyond device ID** - Players are identified by a randomly generated device ID. There is no account system, no access control, and no way to prevent a player from impersonating a different device ID.
+
+---
+
+## Scalability Considerations
+
+The current architecture is intentionally single-node. Here is what breaks at scale:
+
+- **In-memory matchmaking does not survive restarts or scale horizontally.** `WaitingMatchId` is a process-local variable. Two `find_match` RPC calls landing on different Nakama instances will never pair. A Redis-backed atomic compare-and-swap (or Nakama's built-in matchmaker) would be needed for multi-instance deployments.
+
+- **Match state lives in the Nakama process, not in the database.** Each match is an in-memory Go struct. Horizontal scaling would distribute matches across instances, but there is no shared state layer. A player reconnecting to a different instance would find no match to rejoin.
+
+- **No backpressure or rate limiting on move submissions.** A fast client can flood the match loop. This is tolerable for two players, but any fan-out design (spectators, larger lobbies) would need message queuing and per-player rate limiting.
+
+- **The tick rate is fixed.** `MatchLoop` runs at a constant tick rate regardless of whether there is anything to process. For a small number of concurrent matches this is fine; at scale, idle-match CPU overhead becomes meaningful.
+
+---
+
+## Future Improvements
+
+Ordered roughly by impact:
+
+1. **Distributed matchmaking via Redis or Nakama's built-in matchmaker** - Replace `WaitingMatchId` with an atomic Redis key or delegate pairing to Nakama's matchmaker API. This is the first thing to fix before any horizontal scaling attempt.
+
+2. **Reconnection** - Persist match state to the database at phase transitions. Add a `rejoin_match` RPC that looks up a player's active match and reissues a `START` message with current state. This requires a match-id-to-player-id index and a grace period before `OPPONENT_LEFT` is broadcast.
+
+3. **Match persistence and history** - Write completed matches (result, move log, timestamps) to PostgreSQL. Enables leaderboards, replay, and debugging of production issues.
+
+4. **Optimistic UI with server reconciliation** - Apply moves locally on click and reconcile with the authoritative `UPDATE`. Reduces perceived latency on high-latency connections. Requires rollback logic on `REJECTED`, which adds complexity but is a well-understood pattern.
+
+5. **Horizontal scaling strategy** - Sticky sessions (route a player to the instance hosting their match) plus a Redis-backed match registry. Long-term: migrate match state to a shared store so any instance can handle any player's connection.
+
+---
+
+## Edge Cases Handled
+
+- Invalid moves (wrong turn, occupied cell) - rejected server-side, client state unchanged.
+- Disconnect mid-game - remaining player receives `OPPONENT_LEFT` immediately.
+- Lobby leave before opponent joins - waiting match reference is cleared and the match is terminated.
+- Moves after game over - server ignores them; `gameRunning` gate blocks processing.
+- Two-player cap - enforced in `MatchJoinAttempt`; a third join is rejected.
 
 ---
 
 ## Demo
 
-A short walkthrough can show: real-time play, matchmaking, win/draw, and disconnect behaviour. *(Add your video link here.)*
+Real-time play, matchmaking, win/draw, and disconnect handling: [Video walkthrough](https://drive.google.com/file/d/1LS-KzY6qAiPPnPi81B3QwoFFbrTnDFEf/view?usp=sharing)
 
 ---
 
 ## Notes
 
-This project emphasises correctness, reliability, and clear lifecycle behaviour over feature sprawl: a small, server-authoritative multiplayer slice that is predictable to run and reason about.
+This project prioritises correctness and lifecycle reliability over feature breadth. The implementation surface is deliberately small: one authoritative match handler, one RPC for matchmaking, and a thin React client. Every design decision is made to keep the system predictable to run and straightforward to extend.
