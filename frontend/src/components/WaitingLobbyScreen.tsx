@@ -84,6 +84,13 @@ export function WaitingLobbyScreen({
             <button
               type="button"
               onClick={async () => {
+                if (
+                  !globalThis.confirm(
+                    'Leave the lobby? This match will be cancelled.',
+                  )
+                ) {
+                  return
+                }
                 if (matchId && socket){
                   await socket.leaveMatch(matchId)
                 } 
@@ -91,16 +98,9 @@ export function WaitingLobbyScreen({
               }}
               className="rounded-xl border border-white/15 bg-black/30 px-4 py-2.5 text-xs font-semibold text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-200"
             >
-              Back to find match
+              Leave lobby
             </button>
           )}
-          {/* <button
-            type="button"
-            onClick={onEnterArena}
-            className="rounded-xl border border-fuchsia-500/35 bg-fuchsia-500/15 px-4 py-2.5 text-xs font-semibold text-fuchsia-100 transition hover:bg-fuchsia-500/25"
-          >
-            Enter arena
-          </button> */}
         </div>
       </div>
     </div>

@@ -6,16 +6,12 @@ import { WaitingLobbyScreen } from './components/WaitingLobbyScreen'
 import { connectSocket, createSession } from './lib/nakama/connection'
 import type { Session, Socket } from '@heroiclabs/nakama-js'
 
-/**
- * Root shell: initialize Nakama client, session, and socket here (or via context),
- * then pass connection state or client into children.
- */
 function App() {
   const [session, setSession] = useState<Session | null>(null)
   const [socket, setSocket] = useState<Socket | null>(null)
   const [isConnecting, setIsConnecting] = useState(true)
   const [connectionError, setConnectionError] = useState<string | null>(null)
-  const [phase, setPhase] = useState<'lobby' | 'waiting' | 'arena'>('lobby')
+  const [phase, setPhase] = useState<'find' | 'lobby' | 'arena'>('find')
   const [arenaMatchId, setArenaMatchId] = useState<string | null>(null)
   const [myMark, setMyMark] = useState<number | null>(null)
   const [turn, setTurn] = useState<number | null>(null)
@@ -64,17 +60,17 @@ function App() {
   return (
     <>
       <div className="arena-grid-bg" aria-hidden />
-      {session && phase === 'lobby' && (
+      {session && phase === 'find' && (
         <FindMatchScreen
           session={session}
           // isSessionActive={isSessionActive}
           onEnterArena={(matchId) => {
             setArenaMatchId(matchId)
-            setPhase('waiting')
+            setPhase('lobby')
           }}
         />
       )}
-      {session?.user_id && phase === 'waiting' && (
+      {session?.user_id && phase === 'lobby' && (
         <WaitingLobbyScreen
           matchId={arenaMatchId}
           socket={socket}
@@ -85,7 +81,7 @@ function App() {
           setTurn={setTurn}
           onBackToFindMatch={() => {
             setArenaMatchId(null)
-            setPhase('lobby')
+            setPhase('find')
           }}
           onEnterArena={() => setPhase('arena')}
         />
@@ -101,7 +97,7 @@ function App() {
           setTurn={setTurn}
           onBackToLobby={() => {
             setArenaMatchId(null)
-            setPhase('lobby')
+            setPhase('find')
             setMyMark(null)
             setTurn(null)
           }}

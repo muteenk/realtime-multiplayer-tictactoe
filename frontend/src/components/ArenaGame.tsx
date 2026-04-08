@@ -237,6 +237,16 @@ export function ArenaGame({
             <button
               type="button"
               onClick={async () => {
+                const matchOngoing =
+                  Boolean(myMark) && !gameDone && !opponentLeft
+                if (
+                  matchOngoing &&
+                  !globalThis.confirm(
+                    'Leave this match? The game will end for both players.',
+                  )
+                ) {
+                  return
+                }
                 if (matchId && socket){
                   await socket.leaveMatch(matchId)
                 } 
@@ -244,7 +254,7 @@ export function ArenaGame({
               }}
               className="rounded-full border border-white/15 bg-black/30 px-4 py-2 text-xs font-semibold text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-200"
             >
-              Find match
+              Leave Match
             </button>
           )}
           <div className="flex gap-2 rounded-full border border-white/10 bg-black/25 p-1 backdrop-blur-sm">
