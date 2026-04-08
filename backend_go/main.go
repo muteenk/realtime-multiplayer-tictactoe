@@ -4,10 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	// "time"
-
 	"github.com/heroiclabs/nakama-common/runtime"
-	// "google.golang.org/protobuf/encoding/protojson"
 )
 
 func InitModule(_ context.Context, logger runtime.Logger, _ *sql.DB, _ runtime.NakamaModule, initializer runtime.Initializer) error {
@@ -36,5 +33,5 @@ func InitModule(_ context.Context, logger runtime.Logger, _ *sql.DB, _ runtime.N
 }
 
 func main() {
-	// Required entry point for Nakama Go plugin builds.
+	// Might add plugins later
 }

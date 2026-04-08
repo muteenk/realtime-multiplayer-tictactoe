@@ -1,6 +1,6 @@
 package config
 
-var WaitingMatchId string = ""
+var WaitingMatchId string = "" // Match ID of the match that is waiting for a second player
 
 type OpCode int64
 

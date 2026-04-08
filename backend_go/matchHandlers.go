@@ -146,20 +146,8 @@ func (m *MatchHandler) MatchLoop(
 	}
 
 	if !s.gameRunning {
-		// // Purge any disconnected players
-		// for userIdx, presence := range s.presences {
-		// 	if presence == nil {
-		// 		delete(s.presences, userIdx)
-		// 	}
-		// 	dispatcher.BroadcastMessage(
-		// 		int64(config.OpCode_OPCODE_OPPONENT_LEFT),
-		// 		nil, []runtime.Presence{presence}, nil, true,
-		// 	)
-		// }
-
 		activePresences := s.getActivePresences()
 
-		// Check if we have enough players to start the game
 		if len(activePresences) < 2 {
 			return s
 		}
@@ -168,7 +156,6 @@ func (m *MatchHandler) MatchLoop(
 			return nil
 		}
 
-		// Initialize the game state
 		s.gameRunning = true
 		s.gameOver = false
 		s.winner = config.Mark_MARK_UNSPECIFIED
@@ -194,7 +181,6 @@ func (m *MatchHandler) MatchLoop(
 			return s
 		}
 
-		// Broadcast the start message to all players
 		dispatcher.BroadcastMessage(
 			int64(config.OpCode_OPCODE_START),
 			data, activePresences, nil, true,
@@ -332,11 +318,3 @@ func (m *MatchHandler) MatchSignal(ctx context.Context, logger runtime.Logger, d
 func (m *MatchHandler) MatchTerminate(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, graceSeconds int) interface{} {
 	return state
 }
-
-// func calculateDeadlineTicks(l *MatchLabel) int64 {
-// 	if l.Fast == 1 {
-// 		return turnTimeFastSec * tickRate
-// 	} else {
-// 		return turnTimeNormalSec * tickRate
-// 	}
-// }
