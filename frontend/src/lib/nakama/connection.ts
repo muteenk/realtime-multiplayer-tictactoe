@@ -1,5 +1,5 @@
 import client from './client'
-
+const useSSL = import.meta.env.VITE_NAKAMA_SSL === 'true'
 
 export const createSession = async () => {
     try {
@@ -14,7 +14,7 @@ export const createSession = async () => {
 
 export const connectSocket = async (session: any) => {
     try {
-        const socket = client.createSocket(true);
+        const socket = client.createSocket(useSSL);
         await socket.connect(session, true);
         return socket;
     } catch (error) {
