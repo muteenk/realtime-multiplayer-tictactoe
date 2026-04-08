@@ -1,6 +1,16 @@
 import { useEffect } from 'react'
 import type { Socket } from '@heroiclabs/nakama-js'
 
+function useBeforeUnload() {
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [])
+}
+
 type Props = Readonly<{
   matchId: string | null
   socket: Socket | null
@@ -24,6 +34,7 @@ export function WaitingLobbyScreen({
   onBackToFindMatch,
   onEnterArena,
 }: Props) {
+  useBeforeUnload()
 
   useEffect(() => {
     if (!socket || !matchId) return

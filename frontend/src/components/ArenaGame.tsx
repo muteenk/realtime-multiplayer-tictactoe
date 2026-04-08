@@ -71,6 +71,17 @@ export function ArenaGame({
   const [winner, setWinner] = useState<number | null>(null)
   const [pendingMoveIndex, setPendingMoveIndex] = useState<number | null>(null)
 
+  const matchOngoing = Boolean(myMark) && !gameDone && !opponentLeft
+
+  useEffect(() => {
+    if (!matchOngoing) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [matchOngoing])
+
   const isMyTurn = () => {
     if (!myMark || !turn || gameDone || opponentLeft) return false
     return (myMark === 1 && turn === 1) || (myMark === 2 && turn === 2)
@@ -237,8 +248,6 @@ export function ArenaGame({
             <button
               type="button"
               onClick={async () => {
-                const matchOngoing =
-                  Boolean(myMark) && !gameDone && !opponentLeft
                 if (
                   matchOngoing &&
                   !globalThis.confirm(
